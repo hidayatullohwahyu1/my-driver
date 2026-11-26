@@ -1,0 +1,108 @@
+<Window x:Class="MyDriver.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:MyDriver.App.ViewModels"
+        mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
+        Title="My Driver!"
+        Width="1120" Height="740" MinWidth="900" MinHeight="560"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource WindowBackgroundBrush}"
+        Foreground="{DynamicResource TextPrimaryBrush}"
+        FontFamily="Segoe UI" FontSize="14"
+        UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="240" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Menu samping -->
+        <Border Background="{DynamicResource SidebarBackgroundBrush}">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="20,22,20,20">
+                    <Border Width="34" Height="34" CornerRadius="8" Background="{DynamicResource AccentBrush}">
+                        <TextBlock Style="{StaticResource IconText}" FontSize="18" HorizontalAlignment="Center"
+                                   Foreground="{DynamicResource AccentForegroundBrush}" Text="&#xE964;" />
+                    </Border>
+                    <TextBlock Margin="12,0,0,0" VerticalAlignment="Center" FontSize="18" FontWeight="SemiBold"
+                               Text="My Driver!" />
+                </StackPanel>
+
+                <StackPanel DockPanel.Dock="Bottom" Margin="20,12,20,18">
+                    <StackPanel Orientation="Horizontal">
+                        <Ellipse Width="8" Height="8" VerticalAlignment="Center" Margin="0,0,8,0">
+                            <Ellipse.Style>
+                                <Style TargetType="Ellipse">
+                                    <Setter Property="Fill" Value="{DynamicResource StatusSafeBrush}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsReadOnly}" Value="True">
+                                            <Setter Property="Fill" Value="{DynamicResource StatusWarningBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Ellipse.Style>
+                        </Ellipse>
+                        <TextBlock Style="{StaticResource CaptionText}" Text="{Binding ModeLabel}" />
+                    </StackPanel>
+                    <TextBlock Style="{StaticResource CaptionText}" Margin="16,2,0,0" Text="{Binding AppVersion}" />
+                </StackPanel>
+
+                <ListBox ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedItem}"
+                         Background="Transparent" BorderThickness="0"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         ItemContainerStyle="{StaticResource NavItemStyle}"
+                         AutomationProperties.Name="Menu utama">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:NavigationItem}">
+                            <StackPanel Orientation="Horizontal" AutomationProperties.Name="{Binding Title}">
+                                <TextBlock Style="{StaticResource IconText}" Text="{Binding Glyph}" Margin="0,0,14,0" />
+                                <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+        </Border>
+
+        <!-- Isi halaman -->
+        <DockPanel Grid.Column="1">
+            <Border DockPanel.Dock="Top" Style="{StaticResource WarningBanner}"
+                    Visibility="{Binding IsReadOnly, Converter={StaticResource BoolToVisibility}}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Style="{StaticResource IconText}" Text="&#xE72E;" Margin="0,0,12,0" />
+                    <TextBlock Grid.Column="1" VerticalAlignment="Center" TextWrapping="Wrap">
+                        <Run FontWeight="SemiBold" Text="Mode baca saja." />
+                        <Run Text="Aplikasi tidak berjalan sebagai Administrator, jadi scan tetap bisa dipakai tetapi aksi perbaikan dinonaktifkan." />
+                    </TextBlock>
+                    <Button Grid.Column="2" Margin="16,0,0,0" Padding="14,6"
+                            Command="{Binding RunAsAdministratorCommand}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource IconText}" FontSize="14" Text="&#xE7EF;" Margin="0,0,8,0" />
+                            <TextBlock Text="Jalankan sebagai Administrator" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+            </Border>
+
+            <Border DockPanel.Dock="Top" Style="{StaticResource InfoBanner}"
+                    Visibility="{Binding IsDataFallback, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Style="{StaticResource IconText}" Text="&#xE946;" Margin="0,0,12,0" />
+                    <TextBlock VerticalAlignment="Center" TextWrapping="Wrap" Text="{Binding DataFallbackMessage}" />
+                </StackPanel>
+            </Border>
+
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
+                <ContentControl Margin="36,30,36,30" Content="{Binding SelectedItem.Page}" Focusable="False" />
+            </ScrollViewer>
+        </DockPanel>
+    </Grid>
+</Window>

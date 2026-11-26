@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>MyDriver</AssemblyName>
+    <RootNamespace>MyDriver.App</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Title>My Driver!</Title>
+  </PropertyGroup>
+
+  <!-- Publish: satu file exe self-contained (dotnet publish MyDriver.App -c Release -o publish) -->
+  <PropertyGroup Condition="'$(_IsPublishing)' == 'true'">
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MyDriver.Core\MyDriver.Core.csproj" />
+    <ProjectReference Include="..\MyDriver.Windows\MyDriver.Windows.csproj" />
+  </ItemGroup>
+
+</Project>

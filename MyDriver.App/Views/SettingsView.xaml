@@ -1,0 +1,63 @@
+<UserControl x:Class="MyDriver.App.Views.SettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:MyDriver.App.ViewModels"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:SettingsViewModel}">
+    <StackPanel MaxWidth="900" HorizontalAlignment="Left">
+        <TextBlock Style="{StaticResource PageTitleText}" Text="Pengaturan" />
+        <TextBlock Style="{StaticResource PageSubtitleText}" Text="Tampilan, folder data, dan informasi aplikasi." />
+
+        <Border Style="{StaticResource Card}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="Tema" />
+                    <TextBlock Style="{StaticResource CaptionText}" Text="Pilih tampilan terang, gelap, atau ikuti pengaturan Windows." />
+                </StackPanel>
+                <ComboBox Grid.Column="1" MinWidth="180" VerticalAlignment="Center"
+                          ItemsSource="{Binding ThemeOptions}" DisplayMemberPath="Label"
+                          SelectedItem="{Binding SelectedTheme}"
+                          AutomationProperties.Name="Tema" />
+            </Grid>
+        </Border>
+
+        <Border Style="{StaticResource Card}">
+            <StackPanel>
+                <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="Folder data" />
+                <TextBlock Style="{StaticResource CaptionText}" Margin="0,2,0,10"
+                           Text="Snapshot, backup, riwayat, dan log disimpan di sini, dipisah per komputer." />
+                <TextBox IsReadOnly="True" Text="{Binding DataFolder, Mode=OneWay}" Margin="0,0,0,10"
+                         AutomationProperties.Name="Lokasi folder data" />
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="Buka folder data" Command="{Binding OpenDataFolderCommand}" Padding="14,6" Margin="0,0,8,0" />
+                    <Button Content="Buka folder log" Command="{Binding OpenLogFolderCommand}" Padding="14,6" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <Border Style="{StaticResource Card}">
+            <StackPanel>
+                <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="Hak akses" />
+                <TextBlock Style="{StaticResource CaptionText}" Margin="0,2,0,0" Text="{Binding ModeText}" />
+            </StackPanel>
+        </Border>
+
+        <Border Style="{StaticResource PlaceholderCard}">
+            <StackPanel>
+                <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="Scan otomatis dan notifikasi" />
+                <TextBlock Style="{StaticResource CaptionText}" Margin="0,2,0,0"
+                           Text="Scan otomatis, jam scan harian, notifikasi, dan sembunyikan perangkat tak tersambung tersedia pada tahap berikutnya." />
+            </StackPanel>
+        </Border>
+
+        <TextBlock Style="{StaticResource CaptionText}" Margin="2,4,0,0">
+            <Run Text="My Driver! versi" /> <Run Text="{Binding AppVersion, Mode=OneWay}" />
+        </TextBlock>
+    </StackPanel>
+</UserControl>
