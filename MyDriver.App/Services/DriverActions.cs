@@ -1,5 +1,6 @@
 using MyDriver.Core.Backups;
 using MyDriver.Core.Logging;
+using MyDriver.Core.Repair;
 using MyDriver.Windows.Drivers;
 using MyDriver.Windows.Recovery;
 
@@ -46,6 +47,15 @@ public sealed class DriverActions
             var (result, _) = await _backups.BackupAsync(_workspace.Store!, _scan.LastResult!);
             _workspace.RefreshBackups();
             success = result.Success;
+            _workspace.AddHistory(new HistoryEntry
+            {
+                Time = DateTime.Now,
+                Kind = HistoryKind.Backup,
+                Title = "Backup driver",
+                Success = result.Success,
+                Message = result.Message,
+                Commands = result.Command is { } c ? [c.CommandLine] : [],
+            });
             if (result.Success)
             {
                 var old = _workspace.OldBackups.Count;
@@ -78,7 +88,7 @@ public sealed class DriverActions
         }
 
         await RunRestoreAsync("Memasang driver dari backup…", "My Driver!: pulihkan semua driver dari backup",
-            () => _backups.RestoreAllAsync(backup));
+            $"Pulihkan semua driver dari backup {Format.DateTime(backup.CreatedAt)}", () => _backups.RestoreAllAsync(backup));
     }
 
     public async Task RestorePackageAsync(BackupInfo backup, BackupPackage package)
@@ -100,19 +110,31 @@ public sealed class DriverActions
         }
 
         await RunRestoreAsync($"Memasang driver {package.DisplayName}…", $"My Driver!: pasang driver {package.DisplayName} dari backup",
-            () => _backups.RestorePackageAsync(backup, package));
+            $"Pasang dari backup: {package.DisplayName}", () => _backups.RestorePackageAsync(backup, package));
     }
 
-    private async Task RunRestoreAsync(string busyText, string restorePointDescription, Func<Task<DriverOperationResult>> restore)
+    private async Task RunRestoreAsync(
+        string busyText, string restorePointDescription, string historyTitle, Func<Task<DriverOperationResult>> restore)
     {
         var started = await _workspace.RunExclusiveAsync(busyText, async () =>
         {
-            if (!await EnsureRestorePointAsync(restorePointDescription))
+            var restorePoint = await EnsureRestorePointAsync(restorePointDescription);
+            if (restorePoint is null)
             {
                 return;
             }
 
             var result = await restore();
+            _workspace.AddHistory(new HistoryEntry
+            {
+                Time = DateTime.Now,
+                Kind = HistoryKind.Restore,
+                Title = historyTitle,
+                Success = result.Success,
+                Message = result.Message,
+                RestorePoint = restorePoint,
+                Commands = result.Command is { } c ? [c.CommandLine] : [],
+            });
             if (result.Success)
             {
                 Dialogs.Info(result.Message);
@@ -130,31 +152,36 @@ public sealed class DriverActions
         }
     }
 
-    /// <summary>Restore point wajib. Bila gagal, pengguna harus mengonfirmasi dua kali untuk tetap lanjut.</summary>
-    private async Task<bool> EnsureRestorePointAsync(string description)
+    /// <summary>
+    /// Restore point wajib sebelum mengubah driver. Bila gagal, pengguna harus mengonfirmasi dua kali.
+    /// Mengembalikan keterangan untuk Riwayat, atau null bila pengguna membatalkan.
+    /// </summary>
+    public async Task<string?> EnsureRestorePointAsync(string description)
     {
         var result = await _restorePoints.CreateAsync(description);
         if (result.Status == RestorePointStatus.Created)
         {
-            return true;
+            return $"Dibuat {Format.DateTime(result.PointTime ?? DateTime.Now)}";
         }
         if (result.Status == RestorePointStatus.RecentExists)
         {
-            return Dialogs.Confirm($"{result.Message}\n\nLanjutkan?");
+            return Dialogs.Confirm($"{result.Message}\n\nLanjutkan?")
+                ? $"Memakai restore point {Format.DateTime(result.PointTime!.Value)}"
+                : null;
         }
 
         if (!Dialogs.Confirm(
                 $"{result.Message}\n\nTanpa restore point, perubahan driver tidak bisa dibatalkan lewat System Restore. Tetap lanjutkan?",
                 dangerous: true))
         {
-            return false;
+            return null;
         }
         var confirmed = Dialogs.Confirm("Yakin? Lanjutkan TANPA restore point.", dangerous: true);
         _log.Warning($"Pengguna {(confirmed ? "melanjutkan" : "membatalkan")} aksi tanpa restore point.");
-        return confirmed;
+        return confirmed ? "Tanpa restore point (gagal dibuat, dikonfirmasi pengguna)" : null;
     }
 
-    private bool CheckAdministrator(string action)
+    public bool CheckAdministrator(string action)
     {
         if (CanModify)
         {
@@ -164,7 +191,7 @@ public sealed class DriverActions
         return false;
     }
 
-    private bool CheckReady()
+    public bool CheckReady()
     {
         if (_workspace.Store is not null && _scan.LastResult is not null)
         {
@@ -191,7 +218,7 @@ public sealed class DriverActions
             dangerous: true);
     }
 
-    private static void NotifyIfBusy(bool started)
+    public static void NotifyIfBusy(bool started)
     {
         if (!started)
         {

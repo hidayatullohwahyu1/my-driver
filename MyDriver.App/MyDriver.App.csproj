@@ -7,6 +7,7 @@
     <AssemblyName>MyDriver</AssemblyName>
     <RootNamespace>MyDriver.App</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\MyDriver.ico</ApplicationIcon>
     <Title>My Driver!</Title>
   </PropertyGroup>
 
@@ -15,12 +16,22 @@
     <SelfContained>true</SelfContained>
     <PublishSingleFile>true</PublishSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <!-- Tanpa kompresi: exe ~125 MB (bukan ~59 MB), tetapi RAM turun dari ~210 MB ke ~110 MB
+         dan isi exe dibaca seperlunya (lebih cepat dari flashdisk), tidak diurai seluruhnya saat mulai. -->
+    <EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
     <DebugType>none</DebugType>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Ikon dan gambar dibuat oleh tools\make-icon.ps1 -->
+    <Resource Include="Assets\MyDriver.ico" />
+    <Resource Include="Assets\logo-64.png" />
+    <!-- Tampil seketika saat exe dibuka, sebelum jendela utama siap -->
+    <SplashScreen Include="Assets\splash.png" />
   </ItemGroup>
 
   <ItemGroup>

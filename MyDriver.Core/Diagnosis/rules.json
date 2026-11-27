@@ -1,0 +1,182 @@
+{
+  "version": 1,
+  "rules": [
+    {
+      "id": "cm-1",
+      "match": { "type": "deviceError", "code": 1 },
+      "level": "critical",
+      "title": "{device} belum dikonfigurasi dengan benar",
+      "explanation": "Windows belum bisa menyiapkan perangkat ini, biasanya karena driver yang cocok belum terpasang.",
+      "actions": ["installFromBackup", "windowsUpdate", "uninstallAndRescan"]
+    },
+    {
+      "id": "cm-3",
+      "match": { "type": "deviceError", "code": 3 },
+      "level": "critical",
+      "title": "Driver {device} rusak",
+      "explanation": "Driver perangkat ini rusak, atau memori sistem sedang kurang.",
+      "actions": ["restartWindows", "uninstallAndRescan", "installFromBackup"]
+    },
+    {
+      "id": "cm-10",
+      "match": { "type": "deviceError", "code": 10 },
+      "level": "critical",
+      "title": "{device} gagal dijalankan",
+      "explanation": "Windows tidak berhasil menjalankan perangkat ini. Penyebab yang paling sering adalah driver yang tidak cocok atau rusak.",
+      "actions": ["restartDevice", "rollbackToSnapshot", "windowsUpdate", "uninstallAndRescan"]
+    },
+    {
+      "id": "cm-12",
+      "match": { "type": "deviceError", "code": 12 },
+      "level": "critical",
+      "title": "{device} bentrok dengan perangkat lain",
+      "explanation": "Perangkat ini berebut sumber daya sistem dengan perangkat lain, sehingga salah satunya tidak bisa bekerja.",
+      "actions": ["restartWindows", "disableUnusedDevices", "checkBios"]
+    },
+    {
+      "id": "cm-14",
+      "match": { "type": "deviceError", "code": 14 },
+      "level": "warning",
+      "title": "{device} menunggu Windows di-restart",
+      "explanation": "Perubahan driver perangkat ini baru berlaku setelah Windows di-restart.",
+      "actions": ["restartWindows"]
+    },
+    {
+      "id": "cm-18",
+      "match": { "type": "deviceError", "code": 18 },
+      "level": "critical",
+      "title": "Driver {device} perlu dipasang ulang",
+      "explanation": "Windows meminta driver perangkat ini dipasang ulang.",
+      "actions": ["uninstallAndRescan", "installFromBackup"]
+    },
+    {
+      "id": "cm-19",
+      "match": { "type": "deviceError", "code": 19 },
+      "level": "critical",
+      "title": "Data pengaturan {device} rusak",
+      "explanation": "Data konfigurasi perangkat ini di registry Windows rusak atau tidak lengkap.",
+      "actions": ["uninstallAndRescan", "systemRestore"]
+    },
+    {
+      "id": "cm-22",
+      "match": { "type": "deviceError", "code": 22 },
+      "level": "warning",
+      "title": "{device} sedang dinonaktifkan",
+      "explanation": "Perangkat ini dimatikan, oleh pengguna atau oleh aplikasi lain, sehingga tidak bisa dipakai.",
+      "actions": ["enableDevice"]
+    },
+    {
+      "id": "cm-24",
+      "match": { "type": "deviceError", "code": 24 },
+      "level": "warning",
+      "title": "{device} tidak terdeteksi dengan lengkap",
+      "explanation": "Perangkat ini tidak terdeteksi, belum terpasang sepenuhnya, atau sambungannya longgar.",
+      "actions": ["checkConnection", "rescanHardware"]
+    },
+    {
+      "id": "cm-28",
+      "match": { "type": "deviceError", "code": 28 },
+      "level": "critical",
+      "title": "Driver {device} belum terpasang",
+      "explanation": "Windows mengenali perangkat ini, tetapi belum ada driver untuknya sehingga perangkat tidak bisa dipakai.",
+      "actions": ["installFromBackup", "windowsUpdate", "copyHardwareId"]
+    },
+    {
+      "id": "cm-31",
+      "match": { "type": "deviceError", "code": 31 },
+      "level": "critical",
+      "title": "{device} tidak bekerja dengan benar",
+      "explanation": "Windows tidak bisa memuat driver yang dibutuhkan perangkat ini.",
+      "actions": ["restartDevice", "rollbackToSnapshot", "windowsUpdate"]
+    },
+    {
+      "id": "cm-32",
+      "match": { "type": "deviceError", "code": 32 },
+      "level": "critical",
+      "title": "Layanan driver {device} dinonaktifkan",
+      "explanation": "Layanan Windows yang menjalankan driver perangkat ini sedang dimatikan.",
+      "actions": ["reenableDriverService", "uninstallAndRescan"]
+    },
+    {
+      "id": "cm-37-39",
+      "match": { "type": "deviceError", "codes": [37, 39] },
+      "level": "critical",
+      "title": "Driver {device} gagal dimuat",
+      "explanation": "Driver perangkat ini gagal dimuat, rusak, atau filenya hilang.",
+      "actions": ["rollbackToSnapshot", "installFromBackup", "windowsUpdate"]
+    },
+    {
+      "id": "cm-43",
+      "match": { "type": "deviceError", "code": 43 },
+      "level": "critical",
+      "title": "{device} dihentikan Windows",
+      "explanation": "Windows menghentikan perangkat ini karena perangkat melaporkan masalah.",
+      "actions": ["restartDevice", "rollbackToSnapshot", "windowsUpdate", "checkHardware"]
+    },
+    {
+      "id": "cm-45",
+      "match": { "type": "deviceError", "code": 45 },
+      "level": "info",
+      "title": "{device} sedang tidak tersambung",
+      "explanation": "Perangkat ini pernah dipasang, tetapi sekarang tidak tersambung. Tidak perlu tindakan apa pun.",
+      "actions": [],
+      "hiddenByDefault": true
+    },
+    {
+      "id": "cm-48",
+      "match": { "type": "deviceError", "code": 48 },
+      "level": "critical",
+      "title": "Driver {device} diblokir",
+      "explanation": "Windows memblokir driver ini karena diketahui menimbulkan masalah.",
+      "actions": ["windowsUpdate", "manufacturerSite"]
+    },
+    {
+      "id": "cm-52",
+      "match": { "type": "deviceError", "code": 52 },
+      "level": "critical",
+      "title": "Tanda tangan driver {device} tidak valid",
+      "explanation": "Windows menolak memuat driver ini karena tanda tangan digitalnya tidak valid atau tidak bisa diperiksa.",
+      "actions": ["windowsUpdate", "installFromBackup", "manufacturerSite"]
+    },
+    {
+      "id": "cm-other",
+      "match": { "type": "deviceError", "otherwise": true },
+      "level": "warning",
+      "title": "{device} melaporkan masalah",
+      "explanation": "Windows melaporkan kode masalah {code} yang belum dikenali aplikasi ini.",
+      "actions": ["copyHardwareId", "windowsUpdate"]
+    },
+    {
+      "id": "driver-unsigned",
+      "match": { "type": "unsignedDriver" },
+      "level": "warning",
+      "title": "Driver {device} tidak bertanda tangan",
+      "explanation": "Driver ini tidak memiliki tanda tangan digital resmi, sehingga asal-usulnya tidak bisa dipastikan.",
+      "actions": ["windowsUpdate"]
+    },
+    {
+      "id": "driver-old",
+      "match": { "type": "oldDriver", "minAgeYears": 5 },
+      "level": "info",
+      "title": "Driver {device} berusia lebih dari 5 tahun",
+      "explanation": "Driver ini dibuat {age}. Driver tidak wajib diganti selama perangkat berfungsi normal.",
+      "actions": ["windowsUpdate"]
+    },
+    {
+      "id": "backup-missing",
+      "match": { "type": "backupMissing" },
+      "level": "warning",
+      "title": "Belum ada backup driver",
+      "explanation": "Komputer ini belum punya backup driver. Backup memudahkan pemulihan bila driver bermasalah.",
+      "actions": ["backupNow"]
+    },
+    {
+      "id": "backup-old",
+      "match": { "type": "backupOld", "maxAgeDays": 90 },
+      "level": "warning",
+      "title": "Backup driver sudah lama",
+      "explanation": "Backup terakhir dibuat {age}. Driver mungkin sudah berubah sejak itu.",
+      "actions": ["backupNow"]
+    }
+  ]
+}

@@ -5,4 +5,9 @@
     <RootNamespace>MyDriver.Core</RootNamespace>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- Aturan bawaan; disalin ke MyDriverData/rules.json dan bisa ditimpa versi terbaru -->
+    <EmbeddedResource Include="Diagnosis\rules.json" LogicalName="MyDriver.Core.rules.json" />
+  </ItemGroup>
+
 </Project>

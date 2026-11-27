@@ -68,10 +68,41 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <Border Width="72" Height="72" CornerRadius="36" VerticalAlignment="Center"
-                        Background="{DynamicResource StatusUnknownBrush}">
-                    <TextBlock Style="{StaticResource IconText}" FontSize="32" Foreground="White"
-                               HorizontalAlignment="Center" Text="&#xE9CE;" />
+                <Border Width="72" Height="72" CornerRadius="36" VerticalAlignment="Center">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Background" Value="{DynamicResource StatusUnknownBrush}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Status}" Value="{x:Static vm:HomeStatus.Safe}">
+                                    <Setter Property="Background" Value="{DynamicResource StatusSafeBrush}" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Status}" Value="{x:Static vm:HomeStatus.Attention}">
+                                    <Setter Property="Background" Value="{DynamicResource StatusWarningBrush}" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Status}" Value="{x:Static vm:HomeStatus.Problem}">
+                                    <Setter Property="Background" Value="{DynamicResource StatusCriticalBrush}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <TextBlock FontSize="32" Foreground="White" HorizontalAlignment="Center">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource IconText}">
+                                <Setter Property="Text" Value="&#xE9CE;" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Status}" Value="{x:Static vm:HomeStatus.Safe}">
+                                        <Setter Property="Text" Value="&#xE73E;" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Status}" Value="{x:Static vm:HomeStatus.Attention}">
+                                        <Setter Property="Text" Value="&#xE7BA;" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Status}" Value="{x:Static vm:HomeStatus.Problem}">
+                                        <Setter Property="Text" Value="&#xE711;" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
                 </Border>
 
                 <StackPanel Grid.Column="1" Margin="24,0" VerticalAlignment="Center">
@@ -81,8 +112,12 @@
                                Foreground="{DynamicResource TextSecondaryBrush}" Text="{Binding StatusDescription}" />
                 </StackPanel>
 
-                <Button Grid.Column="2" VerticalAlignment="Center" Padding="20,10"
-                        Style="{DynamicResource AccentButtonStyle}" Command="{Binding ScanCommand}">
+                <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                <Button Padding="20,10" HorizontalAlignment="Stretch" Margin="0,0,0,8"
+                        Style="{DynamicResource AccentButtonStyle}" Content="Lihat masalah"
+                        Command="{Binding OpenProblemsCommand}"
+                        Visibility="{Binding HasFindings, Converter={StaticResource BoolToVisibility}}" />
+                <Button Padding="20,10" HorizontalAlignment="Stretch" Command="{Binding ScanCommand}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Style="{StaticResource IconText}" FontSize="14" Text="&#xE721;" Margin="0,0,8,0" />
                         <TextBlock>
@@ -99,14 +134,15 @@
                         </TextBlock>
                     </StackPanel>
                 </Button>
+                </StackPanel>
             </Grid>
         </Border>
 
         <UniformGrid Columns="3">
             <Border Style="{StaticResource Card}" Margin="0,0,6,12">
                 <StackPanel>
-                    <TextBlock Style="{StaticResource CaptionText}" Text="Perangkat tersambung" />
-                    <TextBlock Style="{StaticResource SectionTitleText}" Margin="0,6,0,0" Text="{Binding DeviceCountText}" />
+                    <TextBlock Style="{StaticResource CaptionText}" Text="Jumlah temuan" />
+                    <TextBlock Style="{StaticResource SectionTitleText}" Margin="0,6,0,0" Text="{Binding FindingCountText}" />
                 </StackPanel>
             </Border>
             <Border Style="{StaticResource Card}" Margin="6,0,6,12">

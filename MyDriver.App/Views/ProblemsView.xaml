@@ -1,0 +1,213 @@
+<UserControl x:Class="MyDriver.App.Views.ProblemsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:MyDriver.App.ViewModels"
+             xmlns:diag="clr-namespace:MyDriver.Core.Diagnosis;assembly=MyDriver.Core"
+             mc:Ignorable="d"
+             x:Name="Root"
+             d:DataContext="{d:DesignInstance Type=vm:ProblemsViewModel}">
+    <UserControl.Resources>
+        <!-- Warna sesuai tingkat temuan: merah / kuning / biru -->
+        <Style x:Key="LevelStripe" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Level}" Value="{x:Static diag:FindingLevel.Critical}">
+                    <Setter Property="Background" Value="{DynamicResource StatusCriticalBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Level}" Value="{x:Static diag:FindingLevel.Warning}">
+                    <Setter Property="Background" Value="{DynamicResource StatusWarningBrush}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="LevelText" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Level}" Value="{x:Static diag:FindingLevel.Critical}">
+                    <Setter Property="Foreground" Value="{DynamicResource StatusCriticalBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Level}" Value="{x:Static diag:FindingLevel.Warning}">
+                    <Setter Property="Foreground" Value="{DynamicResource StatusWarningBrush}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="SmallButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Padding" Value="14,5" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="ToolTipService.ShowOnDisabled" Value="True" />
+        </Style>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel MaxWidth="900" HorizontalAlignment="Left" Margin="36,30">
+            <Grid>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource PageTitleText}" Text="Masalah" />
+                    <TextBlock Style="{StaticResource PageSubtitleText}" Margin="0,0,0,12" Text="{Binding SummaryText}" />
+                </StackPanel>
+                <StackPanel HorizontalAlignment="Right" VerticalAlignment="Top" Orientation="Horizontal" Margin="0,4,0,0">
+                    <CheckBox VerticalAlignment="Center" Margin="0,0,16,0" Content="Tampilkan info" IsChecked="{Binding ShowInfo}" />
+                    <Button Padding="14,7" Command="{Binding RescanCommand}" IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBool}}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource IconText}" FontSize="14" Text="&#xE72C;" Margin="0,0,8,0" />
+                            <TextBlock Text="Periksa ulang" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+
+            <Border Style="{StaticResource InfoBanner}" CornerRadius="8" Margin="0,0,0,12"
+                    Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel>
+                    <TextBlock FontWeight="SemiBold" TextWrapping="Wrap" Text="{Binding BusyText}" />
+                    <ProgressBar IsIndeterminate="True" Height="4" Margin="0,8,0,0" />
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource WarningBanner}" CornerRadius="8" Margin="0,0,0,12"
+                    Visibility="{Binding Feedback, Converter={StaticResource NullToCollapsed}}">
+                <TextBlock TextWrapping="Wrap" Text="{Binding Feedback}" />
+            </Border>
+
+            <!-- Tidak ada masalah -->
+            <Border Style="{StaticResource Card}" Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Style="{StaticResource IconText}" FontSize="26" Margin="0,0,16,0"
+                               Foreground="{DynamicResource StatusSafeBrush}" Text="&#xE73E;" />
+                    <TextBlock Style="{StaticResource BodyText}" VerticalAlignment="Center" Text="{Binding EmptyText}" />
+                </StackPanel>
+            </Border>
+
+            <ItemsControl ItemsSource="{Binding Cards}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type vm:FindingCardViewModel}">
+                        <Border Style="{StaticResource Card}" Padding="0">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="5" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border Style="{StaticResource LevelStripe}" CornerRadius="8,0,0,8" />
+
+                                <StackPanel Grid.Column="1" Margin="20,16,20,16">
+                                    <TextBlock Style="{StaticResource LevelText}" Text="{Binding LevelText}" />
+                                    <TextBlock FontSize="17" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,2,0,4"
+                                               Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding Title}" />
+                                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding Explanation}" />
+                                    <TextBlock Style="{StaticResource CaptionText}" Margin="0,6,0,0" Text="{Binding SinceText}" />
+                                    <TextBlock Style="{StaticResource CaptionText}" Margin="0,2,0,0" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource StatusWarningBrush}" Text="{Binding TriedText}"
+                                               Visibility="{Binding TriedText, Converter={StaticResource NullToCollapsed}}" />
+
+                                    <!-- Aturan perubahan + masalah -->
+                                    <Border Style="{StaticResource WarningBanner}" CornerRadius="6" Margin="0,10,0,0"
+                                            Visibility="{Binding ChangeNote, Converter={StaticResource NullToCollapsed}}">
+                                        <TextBlock TextWrapping="Wrap" Text="{Binding ChangeNote}" />
+                                    </Border>
+
+                                    <!-- Rekomendasi bernomor -->
+                                    <TextBlock Style="{StaticResource CaptionText}" FontWeight="SemiBold" Margin="0,14,0,6"
+                                               Text="Saran perbaikan (coba berurutan dari nomor 1):"
+                                               Visibility="{Binding HasActions, Converter={StaticResource BoolToVisibility}}" />
+                                    <ItemsControl ItemsSource="{Binding Actions}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type vm:ActionItemViewModel}">
+                                                <Grid Margin="0,0,0,8">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <Border Width="24" Height="24" CornerRadius="12" VerticalAlignment="Top" Margin="0,0,12,0">
+                                                        <Border.Style>
+                                                            <Style TargetType="Border">
+                                                                <Setter Property="Background" Value="{DynamicResource ControlHoverBrush}" />
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsHighlighted}" Value="True">
+                                                                        <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Border.Style>
+                                                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold"
+                                                                   Text="{Binding Number}">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsHighlighted}" Value="True">
+                                                                            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                    </Border>
+                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                        <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold">
+                                                            <Run Text="{Binding Label, Mode=OneWay}" />
+                                                            <Run FontWeight="Normal" Foreground="{DynamicResource TextSecondaryBrush}">
+                                                                <Run.Style>
+                                                                    <Style TargetType="Run">
+                                                                        <Setter Property="Text" Value="" />
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding WasTried}" Value="True">
+                                                                                <Setter Property="Text" Value="(sudah dicoba)" />
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Run.Style>
+                                                            </Run>
+                                                        </TextBlock>
+                                                        <TextBlock Style="{StaticResource CaptionText}" Text="{Binding Description}" />
+                                                        <TextBlock Style="{StaticResource CaptionText}" FontWeight="SemiBold"
+                                                                   Foreground="{DynamicResource StatusCriticalBrush}" Text="{Binding Note}"
+                                                                   Visibility="{Binding Note, Converter={StaticResource NullToCollapsed}}" />
+                                                    </StackPanel>
+                                                    <Button Grid.Column="2" Style="{StaticResource SmallButton}" Margin="12,0,0,0" VerticalAlignment="Center"
+                                                            Content="{Binding ButtonText}" ToolTip="{Binding ButtonTooltip}"
+                                                            Command="{Binding DataContext.RunActionCommand, ElementName=Root}" CommandParameter="{Binding}"
+                                                            Visibility="{Binding HasButton, Converter={StaticResource BoolToVisibility}}">
+                                                        <Button.IsEnabled>
+                                                            <MultiBinding Converter="{StaticResource AllTrue}">
+                                                                <Binding Path="CanRun" />
+                                                                <Binding Path="DataContext.IsBusy" ElementName="Root" Converter="{StaticResource InverseBool}" />
+                                                            </MultiBinding>
+                                                        </Button.IsEnabled>
+                                                    </Button>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+
+                                    <!-- Istilah teknis disimpan di sini -->
+                                    <Expander Header="Detail teknis" Margin="0,6,0,0" IsExpanded="{Binding IsDetailsExpanded}">
+                                        <ItemsControl ItemsSource="{Binding TechnicalDetails}" Margin="0,8,0,0">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="0,0,0,6">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="110" />
+                                                            <ColumnDefinition Width="*" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Style="{StaticResource CaptionText}" Text="{Binding Key}" />
+                                                        <TextBox Grid.Column="1" IsReadOnly="True" TextWrapping="Wrap" FontFamily="Consolas" FontSize="12"
+                                                                 BorderThickness="0" Background="Transparent" Padding="0"
+                                                                 Text="{Binding Value, Mode=OneWay}" />
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Expander>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

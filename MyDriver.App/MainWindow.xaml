@@ -7,15 +7,16 @@
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
         Title="My Driver!"
-        Width="1120" Height="740" MinWidth="900" MinHeight="560"
-        WindowStartupLocation="CenterScreen"
+        Icon="Assets/MyDriver.ico"
+        Width="1120" Height="720" MinWidth="960" MinHeight="560"
+        WindowStartupLocation="Manual"
         Background="{DynamicResource WindowBackgroundBrush}"
         Foreground="{DynamicResource TextPrimaryBrush}"
         FontFamily="Segoe UI" FontSize="14"
         UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="240" />
+            <ColumnDefinition Width="220" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
@@ -23,10 +24,7 @@
         <Border Background="{DynamicResource SidebarBackgroundBrush}">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="20,22,20,20">
-                    <Border Width="34" Height="34" CornerRadius="8" Background="{DynamicResource AccentBrush}">
-                        <TextBlock Style="{StaticResource IconText}" FontSize="18" HorizontalAlignment="Center"
-                                   Foreground="{DynamicResource AccentForegroundBrush}" Text="&#xE964;" />
-                    </Border>
+                    <Image Width="34" Height="34" Source="Assets/logo-64.png" RenderOptions.BitmapScalingMode="HighQuality" />
                     <TextBlock Margin="12,0,0,0" VerticalAlignment="Center" FontSize="18" FontWeight="SemiBold"
                                Text="My Driver!" />
                 </StackPanel>
@@ -90,6 +88,14 @@
                         </StackPanel>
                     </Button>
                 </Grid>
+            </Border>
+
+            <Border DockPanel.Dock="Top" Style="{StaticResource WarningBanner}"
+                    Visibility="{Binding IsOldWindows, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Style="{StaticResource IconText}" Text="&#xE7BA;" Margin="0,0,12,0" />
+                    <TextBlock VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="820" Text="{Binding OldWindowsMessage}" />
+                </StackPanel>
             </Border>
 
             <Border DockPanel.Dock="Top" Style="{StaticResource InfoBanner}"

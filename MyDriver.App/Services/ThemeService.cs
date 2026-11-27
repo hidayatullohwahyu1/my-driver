@@ -15,6 +15,8 @@ public sealed class ThemeService
 {
     private const string PersonalizeKey = @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize";
     private const int DwmUseImmersiveDarkMode = 20;
+    private const int DwmUseImmersiveDarkModeOld = 19;
+    private bool _fluentAvailable = true;
 
     private readonly Application _app;
     private readonly ILogService _log;
@@ -73,9 +75,22 @@ public sealed class ThemeService
         }
         _palette = palette;
 
+        // Gaya kontrol Fluent (Windows 10/11). Bila gagal di versi Windows tertentu,
+        // aplikasi tetap jalan dengan gaya kontrol klasik dan warna tema sendiri.
+        if (_fluentAvailable)
+        {
+            try
+            {
 #pragma warning disable WPF0001 // ThemeMode masih berlabel eksperimen di WPF
-        _app.ThemeMode = dark ? ThemeMode.Dark : ThemeMode.Light;
+                _app.ThemeMode = dark ? ThemeMode.Dark : ThemeMode.Light;
 #pragma warning restore WPF0001
+            }
+            catch (Exception ex)
+            {
+                _fluentAvailable = false;
+                _log.Warning("Tema Fluent tidak bisa dipakai di Windows ini; memakai gaya kontrol klasik.", ex);
+            }
+        }
 
         foreach (Window window in _app.Windows)
         {
@@ -107,7 +122,11 @@ public sealed class ThemeService
             return;
         }
         var value = dark ? 1 : 0;
-        _ = DwmSetWindowAttribute(hwnd, DwmUseImmersiveDarkMode, ref value, sizeof(int));
+        // Windows 10 sebelum build 18985 memakai atribut 19 untuk bilah judul gelap.
+        if (DwmSetWindowAttribute(hwnd, DwmUseImmersiveDarkMode, ref value, sizeof(int)) != 0)
+        {
+            _ = DwmSetWindowAttribute(hwnd, DwmUseImmersiveDarkModeOld, ref value, sizeof(int));
+        }
     }
 
     [DllImport("dwmapi.dll")]

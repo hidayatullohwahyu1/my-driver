@@ -115,6 +115,52 @@ public sealed class ComputerStore
         _log.Info($"Snapshot sehat disimpan: {snapshot.Drivers.Count} driver.");
     }
 
+    public const int MaxHistoryEntries = 1000;
+
+    /// <summary>Riwayat, terbaru lebih dulu.</summary>
+    public IReadOnlyList<Repair.HistoryEntry> LoadHistory()
+    {
+        try
+        {
+            return (JsonFiles.Read<List<Repair.HistoryEntry>>(HistoryFile) ?? [])
+                .OrderByDescending(h => h.Time)
+                .ToList();
+        }
+        catch (JsonException ex)
+        {
+            _log.Warning($"history.json rusak dan diabaikan: {HistoryFile}", ex);
+            return [];
+        }
+    }
+
+    /// <summary>Menambah satu entri riwayat (disimpan maksimal 1000 entri terbaru).</summary>
+    public IReadOnlyList<Repair.HistoryEntry> AppendHistory(Repair.HistoryEntry entry)
+    {
+        var list = LoadHistory().Prepend(entry).Take(MaxHistoryEntries).ToList();
+        JsonFiles.Write(HistoryFile, list);
+        return list;
+    }
+
+    public string FindingsSeenFile => Path.Combine(Directory, "findings-seen.json");
+
+    /// <summary>Kunci temuan → waktu pertama terlihat, untuk teks "sejak kapan" di kartu masalah.</summary>
+    public IReadOnlyDictionary<string, DateTime> LoadFindingsSeen()
+    {
+        try
+        {
+            return JsonFiles.Read<Dictionary<string, DateTime>>(FindingsSeenFile) ?? [];
+        }
+        catch (JsonException ex)
+        {
+            _log.Warning($"findings-seen.json rusak dan diabaikan: {FindingsSeenFile}", ex);
+            return new Dictionary<string, DateTime>();
+        }
+    }
+
+    /// <summary>Hanya temuan yang masih ada yang disimpan; temuan yang sudah selesai terhapus otomatis.</summary>
+    public void SaveFindingsSeen(IReadOnlyDictionary<string, DateTime> seen) =>
+        JsonFiles.Write(FindingsSeenFile, seen);
+
     /// <summary>Menyimpan scan ke <c>scans/yyyy-MM-dd_HHmm.json</c> dan membuang yang paling lama bila lebih dari 100.</summary>
     public string SaveScan(ScanResult scan)
     {

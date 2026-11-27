@@ -3,8 +3,17 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MyDriver.App.Services;
 using MyDriver.Core.Devices;
+using MyDriver.Core.Diagnosis;
 
 namespace MyDriver.App.ViewModels;
+
+public enum HomeStatus
+{
+    Unknown,
+    Safe,
+    Attention,
+    Problem,
+}
 
 public enum OnboardingStep
 {
@@ -23,24 +32,56 @@ public sealed partial class HomeViewModel : ObservableObject
     private readonly ScanCoordinator _scan;
     private readonly WorkspaceService _workspace;
     private readonly DriverActions _actions;
+    private readonly DiagnosisService _diagnosis;
 
-    public HomeViewModel(AppEnvironment environment, ScanCoordinator scan, WorkspaceService workspace, DriverActions actions)
+    public HomeViewModel(
+        AppEnvironment environment, ScanCoordinator scan, WorkspaceService workspace,
+        DriverActions actions, DiagnosisService diagnosis)
     {
         Environment = environment;
         _scan = scan;
         _workspace = workspace;
         _actions = actions;
+        _diagnosis = diagnosis;
         _scan.PropertyChanged += OnStateChanged;
         _workspace.PropertyChanged += OnStateChanged;
+        _diagnosis.PropertyChanged += OnStateChanged;
     }
+
+    /// <summary>Diminta Beranda untuk membuka halaman Masalah.</summary>
+    public event EventHandler? OpenProblemsRequested;
+
+    public HomeStatus Status => _diagnosis.Report?.Status switch
+    {
+        OverallStatus.Safe => HomeStatus.Safe,
+        OverallStatus.Attention => HomeStatus.Attention,
+        OverallStatus.Problem => HomeStatus.Problem,
+        _ => HomeStatus.Unknown,
+    };
+
+    public bool HasFindings => _diagnosis.Report is { } r && r.CriticalCount + r.WarningCount > 0;
+
+    public string FindingCountText => _diagnosis.Report is { } r
+        ? r.CriticalCount + r.WarningCount == 0
+            ? "Tidak ada"
+            : string.Join(", ", new[]
+              {
+                  r.CriticalCount > 0 ? $"{r.CriticalCount} merah" : null,
+                  r.WarningCount > 0 ? $"{r.WarningCount} kuning" : null,
+              }.Where(s => s is not null))
+        : "–";
 
     public AppEnvironment Environment { get; }
 
     public bool IsScanning => _scan.IsScanning;
 
-    public string StatusTitle => _scan.LastResult is null
-        ? (_scan.IsScanning ? "Sedang memindai…" : "Belum dipindai")
-        : "Scan selesai";
+    public string StatusTitle => Status switch
+    {
+        HomeStatus.Safe => "Aman",
+        HomeStatus.Attention => "Perlu perhatian",
+        HomeStatus.Problem => "Bermasalah",
+        _ => _scan.IsScanning ? "Sedang memindai…" : "Belum dipindai",
+    };
 
     public string StatusDescription
     {
@@ -50,16 +91,20 @@ public sealed partial class HomeViewModel : ObservableObject
             {
                 return error;
             }
-            if (_scan.LastResult is not { } result)
+            if (_diagnosis.Report is not { } report)
             {
                 return "Aplikasi sedang membaca semua perangkat dan driver di komputer ini.";
             }
 
-            var problems = ProblemCount(result);
-            var deviceText = problems == 0
-                ? "Tidak ada perangkat yang melaporkan error."
-                : $"{problems} perangkat melaporkan error. Lihat halaman Perangkat.";
-            return $"{deviceText} Penilaian kesehatan lengkap beserta saran perbaikan menyusul setelah mesin diagnosis selesai.";
+            var top = report.Findings.FirstOrDefault(f => f.Level != FindingLevel.Info);
+            return report.Status switch
+            {
+                OverallStatus.Safe => "Semua perangkat berfungsi normal dan tidak ada masalah driver yang ditemukan.",
+                OverallStatus.Problem when report.CriticalCount == 1 => $"{top!.Title}. Buka halaman Masalah untuk melihat solusinya.",
+                OverallStatus.Problem => $"Ada {report.CriticalCount} masalah serius, misalnya: {top!.Title}. Buka halaman Masalah untuk melihat solusinya.",
+                _ when report.WarningCount == 1 => $"{top!.Title}. Buka halaman Masalah untuk melihat sarannya.",
+                _ => $"Ada {report.WarningCount} hal yang perlu diperhatikan. Buka halaman Masalah untuk melihat sarannya.",
+            };
         }
     }
 
@@ -131,6 +176,9 @@ public sealed partial class HomeViewModel : ObservableObject
     [RelayCommand]
     private Task ScanAsync() => _scan.ScanAsync();
 
+    [RelayCommand]
+    private void OpenProblems() => OpenProblemsRequested?.Invoke(this, EventArgs.Empty);
+
     private void FinishOnboarding()
     {
         _workspace.CompleteOnboarding();
@@ -147,6 +195,9 @@ public sealed partial class HomeViewModel : ObservableObject
         }
 
         OnPropertyChanged(nameof(IsScanning));
+        OnPropertyChanged(nameof(Status));
+        OnPropertyChanged(nameof(HasFindings));
+        OnPropertyChanged(nameof(FindingCountText));
         OnPropertyChanged(nameof(StatusTitle));
         OnPropertyChanged(nameof(StatusDescription));
         OnPropertyChanged(nameof(LastScanText));

@@ -114,11 +114,12 @@
                         <Run Text="{Binding Computer.Manufacturer, Mode=OneWay}" />
                         <Run Text="{Binding Computer.Model, Mode=OneWay}" />
                     </TextBlock>
-                    <TextBlock Style="{StaticResource CaptionText}">
+                    <TextBlock Style="{StaticResource CaptionText}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                               ToolTip="{Binding Computer.BiosText}">
                         <Run Text="BIOS" /> <Run Text="{Binding Computer.BiosText, Mode=OneWay}" />
-                        <Run Text="  ·  " />
-                        <Run Text="{Binding Computer.WindowsText, Mode=OneWay}" />
                     </TextBlock>
+                    <TextBlock Style="{StaticResource CaptionText}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                               Text="{Binding Computer.WindowsText}" ToolTip="{Binding Computer.WindowsText}" />
                 </StackPanel>
                 <Button Grid.Column="2" Style="{StaticResource SmallButton}" VerticalAlignment="Center"
                         Command="{Binding CopyComputerInfoCommand}"
@@ -174,12 +175,15 @@
                 <Grid>
                     <TreeView x:Name="DeviceTree" ItemsSource="{Binding Groups}" BorderThickness="0" Background="Transparent"
                               VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
+                              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                               SelectedItemChanged="DeviceTree_SelectedItemChanged"
                               AutomationProperties.Name="Daftar perangkat per kategori">
                         <TreeView.ItemContainerStyle>
                             <Style TargetType="TreeViewItem" BasedOn="{StaticResource {x:Type TreeViewItem}}">
                                 <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
                                 <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                <Setter Property="AutomationProperties.Name" Value="{Binding Name}" />
                             </Style>
                         </TreeView.ItemContainerStyle>
                         <TreeView.Resources>
@@ -196,19 +200,27 @@
                                 </StackPanel>
                             </HierarchicalDataTemplate>
                             <DataTemplate DataType="{x:Type vm:DeviceItemViewModel}">
-                                <StackPanel Orientation="Horizontal" Margin="0,1" ToolTip="{Binding StatusText}">
-                                    <StackPanel.Style>
-                                        <Style TargetType="StackPanel">
+                                <!-- Lebar dibatasi lebar pohon (dikurangi indentasi + scrollbar) agar nama panjang berakhir "…" -->
+                                <DockPanel Margin="0,1" LastChildFill="True"
+                                           MaxWidth="{Binding ActualWidth, ElementName=DeviceTree, Converter={StaticResource Subtract}, ConverterParameter=78}">
+                                    <DockPanel.ToolTip>
+                                        <StackPanel>
+                                            <TextBlock FontWeight="SemiBold" Text="{Binding Name}" />
+                                            <TextBlock Text="{Binding StatusText}" />
+                                        </StackPanel>
+                                    </DockPanel.ToolTip>
+                                    <DockPanel.Style>
+                                        <Style TargetType="DockPanel">
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding Status}" Value="{x:Static dev:DeviceStatus.NotConnected}">
                                                     <Setter Property="Opacity" Value="0.55" />
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
-                                    </StackPanel.Style>
-                                    <TextBlock Style="{StaticResource StatusGlyph}" />
-                                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
-                                </StackPanel>
+                                    </DockPanel.Style>
+                                    <TextBlock DockPanel.Dock="Left" Style="{StaticResource StatusGlyph}" />
+                                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                </DockPanel>
                             </DataTemplate>
                         </TreeView.Resources>
                     </TreeView>

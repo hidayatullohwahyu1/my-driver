@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using MyDriver.Core.Backups;
 using MyDriver.Core.Devices;
 using MyDriver.Core.Logging;
+using MyDriver.Core.Repair;
 using MyDriver.Core.Snapshots;
 using MyDriver.Core.Storage;
 
@@ -41,6 +42,10 @@ public sealed partial class WorkspaceService : ObservableObject
     [ObservableProperty]
     private bool _needsOnboarding;
 
+    /// <summary>Riwayat scan dan aksi (terbaru lebih dulu).</summary>
+    [ObservableProperty]
+    private IReadOnlyList<HistoryEntry> _history = [];
+
     [ObservableProperty]
     private bool _isBusy;
 
@@ -78,6 +83,22 @@ public sealed partial class WorkspaceService : ObservableObject
 
     public void RefreshBackups() => Backups = Store?.ListBackups() ?? [];
 
+    public void AddHistory(HistoryEntry entry)
+    {
+        if (Store is null)
+        {
+            return;
+        }
+        try
+        {
+            History = Store.AppendHistory(entry);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _log.Warning("history.json tidak bisa ditulis.", ex);
+        }
+    }
+
     /// <summary>Menjalankan satu aksi berat. Mengembalikan false bila ada aksi lain yang masih berjalan.</summary>
     public async Task<bool> RunExclusiveAsync(string busyText, Func<Task> action)
     {
@@ -114,9 +135,24 @@ public sealed partial class WorkspaceService : ObservableObject
                 Store = ComputerStore.Open(_paths, result.Computer, DateTime.Now, _log);
                 Snapshot = Store.LoadSnapshot();
                 RefreshBackups();
+                History = Store.LoadHistory();
                 NeedsOnboarding = !Store.Profile.OnboardingCompleted && Snapshot is null;
             }
             Store.SaveScan(result);
+
+            // Tahap cepat saja; pelengkapan tanda tangan bukan scan baru.
+            if (!result.SignaturesChecked)
+            {
+                AddHistory(new HistoryEntry
+                {
+                    Time = result.ScannedAt,
+                    Kind = HistoryKind.Scan,
+                    Title = "Scan perangkat",
+                    Message = $"{result.ConnectedCount} perangkat tersambung, {result.ProblemCount} bermasalah, " +
+                              $"{result.DisabledCount} dinonaktifkan ({result.Duration.TotalSeconds:0.0} dtk).",
+                    Success = true,
+                });
+            }
             StorageError = null;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)

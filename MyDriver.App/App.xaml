@@ -15,14 +15,16 @@
 
             <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
             <local:NullToCollapsedConverter x:Key="NullToCollapsed" />
+            <local:InverseBooleanConverter x:Key="InverseBool" />
+            <local:SubtractConverter x:Key="Subtract" />
+            <local:AllTrueConverter x:Key="AllTrue" />
 
             <!-- Setiap ViewModel halaman ditampilkan oleh View pasangannya -->
             <DataTemplate DataType="{x:Type vm:HomeViewModel}"><views:HomeView /></DataTemplate>
-            <!-- Sementara memakai tampilan "segera hadir"; diganti View sendiri di tahapnya -->
-            <DataTemplate DataType="{x:Type vm:ProblemsViewModel}"><views:PlaceholderPageView /></DataTemplate>
+            <DataTemplate DataType="{x:Type vm:ProblemsViewModel}"><views:ProblemsView /></DataTemplate>
             <DataTemplate DataType="{x:Type vm:DevicesViewModel}"><views:DevicesView /></DataTemplate>
             <DataTemplate DataType="{x:Type vm:BackupViewModel}"><views:BackupView /></DataTemplate>
-            <DataTemplate DataType="{x:Type vm:HistoryViewModel}"><views:PlaceholderPageView /></DataTemplate>
+            <DataTemplate DataType="{x:Type vm:HistoryViewModel}"><views:HistoryView /></DataTemplate>
             <DataTemplate DataType="{x:Type vm:SettingsViewModel}"><views:SettingsView /></DataTemplate>
         </ResourceDictionary>
     </Application.Resources>

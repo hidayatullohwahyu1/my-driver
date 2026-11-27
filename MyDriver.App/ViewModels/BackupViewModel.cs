@@ -110,7 +110,7 @@ public sealed partial class BackupViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void Delete(BackupItemViewModel? item)
+    private async Task DeleteAsync(BackupItemViewModel? item)
     {
         if (item is null || _workspace.Store is null || IsBusy)
         {
@@ -122,11 +122,11 @@ public sealed partial class BackupViewModel : ObservableObject
         {
             return;
         }
-        DeleteBackups([item.Info]);
+        await DeleteBackupsAsync([item.Info]);
     }
 
     [RelayCommand]
-    private void DeleteOldBackups()
+    private async Task DeleteOldBackupsAsync()
     {
         var old = _workspace.OldBackups;
         if (old.Count == 0 || _workspace.Store is null || IsBusy)
@@ -138,24 +138,38 @@ public sealed partial class BackupViewModel : ObservableObject
                 $"Hapus permanen {old.Count} backup lama berikut? {BackupRetention.KeepCount} backup terbaru tetap disimpan.\n\n{list}\n\nTidak bisa dikembalikan.",
                 dangerous: true))
         {
-            DeleteBackups(old);
+            await DeleteBackupsAsync(old);
         }
     }
 
-    private void DeleteBackups(IEnumerable<BackupInfo> backups)
+    /// <summary>
+    /// Folder backup bisa ratusan MB berisi ribuan file. Penghapusan dijalankan di latar
+    /// agar jendela tidak menjadi "Not Responding".
+    /// </summary>
+    private async Task DeleteBackupsAsync(IReadOnlyList<BackupInfo> backups)
     {
-        foreach (var backup in backups)
+        var store = _workspace.Store!;
+        var failures = new List<string>();
+        await _workspace.RunExclusiveAsync("Menghapus backup…", () => Task.Run(() =>
         {
-            try
+            foreach (var backup in backups)
             {
-                _workspace.Store!.DeleteBackup(backup);
+                try
+                {
+                    store.DeleteBackup(backup);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+                {
+                    failures.Add($"{backup.Name}: {ex.Message}");
+                }
             }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
-            {
-                Dialogs.Error($"Backup {backup.Name} gagal dihapus: {ex.Message}");
-            }
-        }
+        }));
+
         _workspace.RefreshBackups();
+        if (failures.Count > 0)
+        {
+            Dialogs.Error("Sebagian backup gagal dihapus:\n\n" + string.Join("\n", failures));
+        }
     }
 
     private void OnWorkspaceChanged(object? sender, PropertyChangedEventArgs e)
