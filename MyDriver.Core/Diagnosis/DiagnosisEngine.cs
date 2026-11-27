@@ -40,6 +40,9 @@ public sealed record Finding
 
     /// <summary>Waktu temuan ini pertama kali terlihat.</summary>
     public DateTime FirstSeen { get; init; }
+
+    /// <summary>Detail teknis tambahan (mis. kode blue screen, file dump, driver tersangka).</summary>
+    public IReadOnlyList<KeyValuePair<string, string>> Details { get; init; } = [];
 }
 
 public sealed record DiagnosisInput(
@@ -47,7 +50,8 @@ public sealed record DiagnosisInput(
     HealthySnapshot? Snapshot,
     DateTime? LastBackupAt,
     DateTime Now,
-    IReadOnlyDictionary<string, DateTime>? FirstSeen = null);
+    IReadOnlyDictionary<string, DateTime>? FirstSeen = null,
+    SystemHealth? Health = null);
 
 public sealed record DiagnosisReport(DateTime CreatedAt, IReadOnlyList<Finding> Findings)
 {
@@ -67,11 +71,12 @@ public sealed record DiagnosisReport(DateTime CreatedAt, IReadOnlyList<Finding> 
 }
 
 /// <summary>
-/// Mencocokkan hasil scan dengan aturan dan menghasilkan kartu masalah.
+/// Mencocokkan hasil scan dan log kejadian dengan aturan, lalu menghasilkan kartu masalah.
 /// Logika murni (tanpa akses Windows) agar setiap aturan bisa diuji dengan data contoh.
 /// </summary>
 public sealed class DiagnosisEngine
 {
+    private const int MaxCrashCards = 5;
     private static readonly CultureInfo Indonesian = CultureInfo.GetCultureInfo("id-ID");
 
     private readonly RuleSet _rules;
@@ -87,9 +92,23 @@ public sealed class DiagnosisEngine
         findings.AddRange(DeviceErrors(input));
         findings.AddRange(DriverConditions(input));
         findings.AddRange(BackupCondition(input));
+        if (input.Health is { } health)
+        {
+            var devices = new DeviceIndex(input.Scan.Devices, health.ServiceImages);
+            findings.AddRange(GraphicsTimeouts(input, health, devices));
+            findings.AddRange(DriverLoadFailures(input, health));
+            findings.AddRange(Crashes(input, health, devices));
+            findings.AddRange(HardwareErrors(input, health));
+            findings.AddRange(UnexpectedShutdowns(input, health));
+        }
 
         var ordered = findings
-            .Select(f => f with { FirstSeen = input.FirstSeen?.GetValueOrDefault(f.Key) is { } seen && seen != default ? seen : input.Now })
+            .Select(f => f with
+            {
+                FirstSeen = f.FirstSeen != default ? f.FirstSeen
+                    : input.FirstSeen?.GetValueOrDefault(f.Key) is { } seen && seen != default ? seen
+                    : input.Now,
+            })
             .OrderByDescending(f => f.Level)
             .ThenBy(f => f.HiddenByDefault)
             .ThenBy(f => f.Device?.Name ?? string.Empty, StringComparer.CurrentCultureIgnoreCase)
@@ -97,9 +116,11 @@ public sealed class DiagnosisEngine
         return new DiagnosisReport(input.Now, ordered);
     }
 
+    // ---- Perangkat ----
+
     private IEnumerable<Finding> DeviceErrors(DiagnosisInput input)
     {
-        var rules = _rules.Rules.Where(r => r.Match.Type == MatchTypes.DeviceError).ToList();
+        var rules = RulesOf(MatchTypes.DeviceError).ToList();
         var fallback = rules.FirstOrDefault(r => r.Match.Otherwise);
 
         foreach (var device in input.Scan.Devices)
@@ -116,22 +137,22 @@ public sealed class DiagnosisEngine
                 continue;
             }
 
-            var finding = Create(rule, device, input, code: code);
+            var finding = Create(rule, device, Values(device, ("code", code.ToString(CultureInfo.InvariantCulture))));
             yield return ApplyChangeRule(finding, device, input.Snapshot);
         }
     }
 
     private IEnumerable<Finding> DriverConditions(DiagnosisInput input)
     {
-        var unsigned = _rules.Rules.FirstOrDefault(r => r.Match.Type == MatchTypes.UnsignedDriver);
-        var old = _rules.Rules.FirstOrDefault(r => r.Match.Type == MatchTypes.OldDriver);
+        var unsigned = RulesOf(MatchTypes.UnsignedDriver).FirstOrDefault();
+        var old = RulesOf(MatchTypes.OldDriver).FirstOrDefault();
 
         foreach (var device in input.Scan.Devices.Where(d => d.IsPresent && d.HasDriver))
         {
             // Status tanda tangan baru diketahui setelah pemeriksaan latar selesai.
             if (unsigned is not null && input.Scan.SignaturesChecked && device.IsSigned == false)
             {
-                yield return Create(unsigned, device, input);
+                yield return Create(unsigned, device, Values(device));
             }
 
             // Hanya driver pihak ketiga: driver bawaan Windows memakai tanggal lama (mis. 2006) secara sengaja.
@@ -141,7 +162,7 @@ public sealed class DiagnosisEngine
                 && device.DriverDate is { } date
                 && date.AddYears(old.Match.MinAgeYears ?? 5) < input.Now)
             {
-                yield return Create(old, device, input, age: AgeText(date, input.Now));
+                yield return Create(old, device, Values(device, ("age", AgeText(date, input.Now))));
             }
         }
     }
@@ -150,24 +171,196 @@ public sealed class DiagnosisEngine
     {
         if (input.LastBackupAt is not { } last)
         {
-            var missing = _rules.Rules.FirstOrDefault(r => r.Match.Type == MatchTypes.BackupMissing);
-            if (missing is not null)
+            if (RulesOf(MatchTypes.BackupMissing).FirstOrDefault() is { } missing)
             {
-                yield return Create(missing, null, input);
+                yield return Create(missing, null, Values(null));
             }
             yield break;
         }
 
-        var oldRule = _rules.Rules.FirstOrDefault(r => r.Match.Type == MatchTypes.BackupOld);
-        if (oldRule is not null && (input.Now - last).TotalDays > (oldRule.Match.MaxAgeDays ?? 90))
+        if (RulesOf(MatchTypes.BackupOld).FirstOrDefault() is { } oldRule
+            && (input.Now - last).TotalDays > (oldRule.Match.MaxAgeDays ?? 90))
         {
-            yield return Create(oldRule, null, input, age: AgeText(last, input.Now));
+            yield return Create(oldRule, null, Values(null, ("age", AgeText(last, input.Now))));
         }
     }
 
+    // ---- Log kejadian ----
+
+    /// <summary>Kartu grafis berhenti merespons lalu pulih (Display 4101). Merah bila sering.</summary>
+    private IEnumerable<Finding> GraphicsTimeouts(DiagnosisInput input, SystemHealth health, DeviceIndex devices)
+    {
+        if (RulesOf(MatchTypes.Tdr).FirstOrDefault() is not { } rule)
+        {
+            yield break;
+        }
+
+        var events = Within(health.Events, rule, input.Now, 7).Where(e => e.Is(SystemEvent.DisplayProvider, 4101));
+        foreach (var group in events.GroupBy(e => e.Property(0) ?? string.Empty, StringComparer.OrdinalIgnoreCase))
+        {
+            var count = group.Count();
+            var device = devices.ForDriver(group.Key, DeviceCategory.Display);
+            var finding = Create(rule, device, Values(device,
+                ("count", count.ToString(CultureInfo.InvariantCulture)),
+                ("date", FormatDate(group.Max(e => e.Time)))));
+            var level = count >= (rule.Match.CriticalCount ?? int.MaxValue) ? FindingLevel.Critical : rule.Level;
+            yield return finding with
+            {
+                Key = $"{rule.Id}|{group.Key.ToLowerInvariant()}",
+                Level = level,
+                FirstSeen = group.Min(e => e.Time),
+                Details = [new("Driver", group.Key), new("Jumlah kejadian", count.ToString(CultureInfo.InvariantCulture))],
+            };
+        }
+    }
+
+    /// <summary>Driver gagal dimuat saat start (Kernel-PnP 219).</summary>
+    private IEnumerable<Finding> DriverLoadFailures(DiagnosisInput input, SystemHealth health)
+    {
+        if (RulesOf(MatchTypes.DriverLoadFailed).FirstOrDefault() is not { } rule)
+        {
+            yield break;
+        }
+
+        var events = Within(health.Events, rule, input.Now, 7).Where(e => e.Is(SystemEvent.KernelPnpProvider, 219));
+        foreach (var group in events.GroupBy(e => e.Property(1) ?? string.Empty, StringComparer.OrdinalIgnoreCase))
+        {
+            if (group.Key.Length == 0)
+            {
+                continue;
+            }
+            var latest = group.MaxBy(e => e.Time)!;
+            var driver = (latest.Property(4) ?? string.Empty).Replace(@"\Driver\", string.Empty, StringComparison.OrdinalIgnoreCase);
+            var device = input.Scan.Devices.FirstOrDefault(d => string.Equals(d.InstanceId, group.Key, StringComparison.OrdinalIgnoreCase));
+
+            var finding = Create(rule, device, Values(device,
+                ("driver", driver),
+                ("count", group.Count().ToString(CultureInfo.InvariantCulture)),
+                ("date", FormatDate(latest.Time))));
+            var normalNow = device is { Status: DeviceStatus.Normal };
+            yield return finding with
+            {
+                Key = $"{rule.Id}|{group.Key}",
+                Level = rule.DowngradeWhenDeviceNormal && normalNow ? FindingLevel.Info : rule.Level,
+                FirstSeen = group.Min(e => e.Time),
+                Explanation = normalNow ? finding.Explanation + " Saat ini perangkat berfungsi normal." : finding.Explanation,
+                Details = [new("Driver", driver), new("ID perangkat", group.Key), new("Kode status", latest.Property(2) ?? "–")],
+            };
+        }
+    }
+
+    /// <summary>Blue screen (BugCheck 1001 + minidump). Driver tersangka dicocokkan ke perangkat pemiliknya.</summary>
+    private IEnumerable<Finding> Crashes(DiagnosisInput input, SystemHealth health, DeviceIndex devices)
+    {
+        var rules = RulesOf(MatchTypes.BugCheck).ToList();
+        if (rules.Count == 0)
+        {
+            yield break;
+        }
+
+        var window = rules.Max(r => r.Match.WindowDays ?? 30);
+        foreach (var crash in health.Crashes.Where(c => c.Time >= input.Now.AddDays(-window)).OrderByDescending(c => c.Time).Take(MaxCrashCards))
+        {
+            var info = BugCheckCatalog.Get(crash.BugCheckCode);
+            var cause = info.Cause == CrashCause.Hardware ? "hardware" : "driver";
+            var rule = rules.FirstOrDefault(r => string.Equals(r.Match.Cause, cause, StringComparison.OrdinalIgnoreCase))
+                ?? rules.FirstOrDefault(r => r.Match.Cause is null);
+            if (rule is null || crash.Time < input.Now.AddDays(-(rule.Match.WindowDays ?? 30)))
+            {
+                continue;
+            }
+
+            var device = crash.SuspectDriver is { } suspect ? devices.ForDriver(suspect) : null;
+            var suspectText = crash.SuspectDriver is { } s
+                ? device is null ? $"Driver yang dicurigai: {s}." : $"Driver yang dicurigai: {s} milik {device.Name}."
+                : crash.DumpNote ?? "Driver penyebabnya tidak bisa dipastikan dari file dump.";
+
+            var finding = Create(rule, device, Values(device,
+                ("date", FormatDate(crash.Time)),
+                ("meaning", info.Meaning),
+                ("suspect", cause == "hardware" ? string.Empty : suspectText)));
+
+            var details = new List<KeyValuePair<string, string>>
+            {
+                new("Kode blue screen", $"{BugCheckCatalog.Hex(crash.BugCheckCode)} {info.Name}"),
+                new("Parameter", string.Join(", ", crash.Parameters.Select(p => "0x" + p.ToString("X", CultureInfo.InvariantCulture)))),
+                new("File dump", crash.DumpPath ?? "–"),
+                new("Driver tersangka", crash.SuspectDriver ?? "–"),
+            };
+            if (crash.StackDrivers.Count > 0)
+            {
+                details.Add(new("Driver di tumpukan", string.Join(", ", crash.StackDrivers)));
+            }
+
+            yield return finding with
+            {
+                Key = $"{rule.Id}|{crash.ReportId ?? crash.Time.ToString("O", CultureInfo.InvariantCulture)}",
+                Explanation = finding.Explanation.Trim(),
+                Details = details,
+                FirstSeen = crash.Time,
+            };
+        }
+    }
+
+    /// <summary>Kesalahan hardware dari WHEA-Logger (tingkat galat/kritis).</summary>
+    private IEnumerable<Finding> HardwareErrors(DiagnosisInput input, SystemHealth health)
+    {
+        if (RulesOf(MatchTypes.Whea).FirstOrDefault() is not { } rule)
+        {
+            yield break;
+        }
+
+        var events = Within(health.Events, rule, input.Now, 30)
+            .Where(e => string.Equals(e.Provider, SystemEvent.WheaProvider, StringComparison.OrdinalIgnoreCase) && e.Level is 1 or 2)
+            .ToList();
+        if (events.Count == 0)
+        {
+            yield break;
+        }
+
+        var finding = Create(rule, null, Values(null,
+            ("count", events.Count.ToString(CultureInfo.InvariantCulture)),
+            ("date", FormatDate(events.Max(e => e.Time)))));
+        yield return finding with
+        {
+            Details = [new("ID kejadian", string.Join(", ", events.Select(e => e.Id).Distinct()))],
+            FirstSeen = events.Min(e => e.Time),
+        };
+    }
+
+    /// <summary>Mati mendadak (Kernel-Power 41).</summary>
+    private IEnumerable<Finding> UnexpectedShutdowns(DiagnosisInput input, SystemHealth health)
+    {
+        if (RulesOf(MatchTypes.UnexpectedShutdown).FirstOrDefault() is not { } rule)
+        {
+            yield break;
+        }
+
+        var events = Within(health.Events, rule, input.Now, 7).Where(e => e.Is(SystemEvent.KernelPowerProvider, 41)).ToList();
+        if (events.Count == 0)
+        {
+            yield break;
+        }
+
+        // Properti 0 = kode BugCheck; bukan 0 berarti mati mendadak itu karena blue screen.
+        var withCrash = events.Count(e => e.Property(0) is { } p && p != "0");
+        var finding = Create(rule, null, Values(null,
+            ("count", events.Count.ToString(CultureInfo.InvariantCulture)),
+            ("date", FormatDate(events.Max(e => e.Time)))));
+        yield return finding with
+        {
+            FirstSeen = events.Min(e => e.Time),
+            Explanation = withCrash > 0
+                ? finding.Explanation + $" {withCrash} di antaranya terjadi karena blue screen; lihat kartu blue screen."
+                : finding.Explanation + " Tidak ada blue screen yang tercatat bersamaan, jadi penyebabnya kemungkinan daya atau hardware.",
+        };
+    }
+
+    // ---- Aturan perubahan + masalah ----
+
     /// <summary>
-    /// Aturan "perubahan + masalah": bila perangkat bermasalah dan versi drivernya berbeda dari
-    /// snapshot sehat, rekomendasi teratas selalu "Kembalikan ke versi snapshot".
+    /// Bila perangkat bermasalah dan versi drivernya berbeda dari snapshot sehat,
+    /// rekomendasi teratas selalu "Kembalikan ke versi snapshot".
     /// </summary>
     private static Finding ApplyChangeRule(Finding finding, DeviceInfo device, HealthySnapshot? snapshot)
     {
@@ -205,12 +398,33 @@ public sealed class DiagnosisEngine
         return ids.Count == 0 ? null : snapshot.Drivers.FirstOrDefault(d => d.HardwareIds.Any(ids.Contains));
     }
 
-    private static Finding Create(DiagnosisRule rule, DeviceInfo? device, DiagnosisInput input, int? code = null, string? age = null)
+    // ---- Pembantu ----
+
+    private IEnumerable<DiagnosisRule> RulesOf(string type) => _rules.Rules.Where(r => r.Match.Type == type);
+
+    private static IEnumerable<SystemEvent> Within(IEnumerable<SystemEvent> events, DiagnosisRule rule, DateTime now, int defaultDays) =>
+        events.Where(e => e.Time >= now.AddDays(-(rule.Match.WindowDays ?? defaultDays)) && e.Time <= now.AddMinutes(5));
+
+    private static Dictionary<string, string> Values(DeviceInfo? device, params (string Key, string Value)[] extra)
     {
-        string Fill(string text) => text
-            .Replace("{device}", device?.Name ?? "Perangkat", StringComparison.Ordinal)
-            .Replace("{code}", code?.ToString(CultureInfo.InvariantCulture) ?? string.Empty, StringComparison.Ordinal)
-            .Replace("{age}", age ?? string.Empty, StringComparison.Ordinal);
+        var values = new Dictionary<string, string>(StringComparer.Ordinal) { ["device"] = device?.Name ?? "Perangkat" };
+        foreach (var (key, value) in extra)
+        {
+            values[key] = value;
+        }
+        return values;
+    }
+
+    private static Finding Create(DiagnosisRule rule, DeviceInfo? device, IReadOnlyDictionary<string, string> values)
+    {
+        string Fill(string text)
+        {
+            foreach (var (key, value) in values)
+            {
+                text = text.Replace("{" + key + "}", value, StringComparison.Ordinal);
+            }
+            return text;
+        }
 
         return new Finding
         {
@@ -219,12 +433,18 @@ public sealed class DiagnosisEngine
             Level = rule.Level,
             Title = Fill(rule.Title),
             Explanation = Fill(rule.Explanation),
-            Actions = rule.Actions.Where(ActionCatalog.IsKnown).Select(a => new RecommendedAction(a)).ToList(),
+            // Aksi khusus perangkat dibuang bila temuan ini tidak terkait perangkat tertentu.
+            Actions = rule.Actions
+                .Where(ActionCatalog.IsKnown)
+                .Where(a => device is not null || !ActionCatalog.Get(a).NeedsDevice)
+                .Select(a => new RecommendedAction(a))
+                .ToList(),
             Device = device,
             HiddenByDefault = rule.HiddenByDefault,
-            FirstSeen = input.Now,
         };
     }
+
+    private static string FormatDate(DateTime date) => date.ToString("d MMMM yyyy, HH.mm", Indonesian);
 
     private static string AgeText(DateTime date, DateTime now)
     {
@@ -232,5 +452,30 @@ public sealed class DiagnosisEngine
         return days >= 365
             ? $"{(int)(days / 365.25)} tahun lalu"
             : $"{(int)days} hari lalu";
+    }
+
+    /// <summary>Mencari perangkat pemilik sebuah file driver (.sys) atau nama layanan.</summary>
+    private sealed class DeviceIndex(IReadOnlyList<DeviceInfo> devices, IReadOnlyDictionary<string, string> serviceImages)
+    {
+        public DeviceInfo? ForDriver(string driver, DeviceCategory? prefer = null)
+        {
+            if (string.IsNullOrWhiteSpace(driver))
+            {
+                return null;
+            }
+
+            var name = Path.GetFileName(driver.Trim());
+            var baseName = Path.GetFileNameWithoutExtension(name);
+            var matches = devices
+                .Where(d => d.Service is { } svc
+                    && (string.Equals(svc, baseName, StringComparison.OrdinalIgnoreCase)
+                        || (serviceImages.TryGetValue(svc, out var image) && string.Equals(image, name, StringComparison.OrdinalIgnoreCase))
+                        || (serviceImages.TryGetValue(svc, out image) && string.Equals(Path.GetFileNameWithoutExtension(image), baseName, StringComparison.OrdinalIgnoreCase))))
+                .OrderByDescending(d => d.Category == prefer)
+                .ThenByDescending(d => d.IsPresent)
+                .ThenByDescending(d => d.Status == DeviceStatus.Problem)
+                .ToList();
+            return matches.FirstOrDefault();
+        }
     }
 }

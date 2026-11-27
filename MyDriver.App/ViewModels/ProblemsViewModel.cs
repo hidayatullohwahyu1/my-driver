@@ -223,6 +223,7 @@ public sealed partial class FindingCardViewModel : ObservableObject
                 details.Add(new("Terlindung", "Ya — tidak bisa di-uninstall, dinonaktifkan, atau di-restart dari aplikasi"));
             }
         }
+        details.AddRange(finding.Details);
         details.Add(new("Aturan", finding.RuleId));
         TechnicalDetails = details;
     }

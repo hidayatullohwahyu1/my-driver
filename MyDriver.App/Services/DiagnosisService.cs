@@ -32,7 +32,7 @@ public sealed partial class DiagnosisService : ObservableObject
 
     private void OnChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(ScanCoordinator.LastResult) or nameof(WorkspaceService.Store)
+        if (e.PropertyName is nameof(ScanCoordinator.LastResult) or nameof(ScanCoordinator.SystemHealth) or nameof(WorkspaceService.Store)
             or nameof(WorkspaceService.Snapshot) or nameof(WorkspaceService.Backups))
         {
             Run();
@@ -47,11 +47,16 @@ public sealed partial class DiagnosisService : ObservableObject
         }
 
         var report = _engine.Diagnose(new DiagnosisInput(
-            scan, _workspace.Snapshot, _workspace.LastBackup?.CreatedAt, DateTime.Now, store.LoadFindingsSeen()));
+            scan, _workspace.Snapshot, _workspace.LastBackup?.CreatedAt, DateTime.Now, store.LoadFindingsSeen(), _scan.SystemHealth));
 
         try
         {
-            store.SaveFindingsSeen(report.FirstSeenMap());
+            // Sebelum log kejadian terbaca, temuan blue screen/TDR belum ada; jangan sampai
+            // catatan "sejak kapan"-nya terhapus.
+            if (_scan.SystemHealth is not null)
+            {
+                store.SaveFindingsSeen(report.FirstSeenMap());
+            }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

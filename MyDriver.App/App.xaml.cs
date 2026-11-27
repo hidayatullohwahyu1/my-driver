@@ -9,8 +9,10 @@ using MyDriver.Core.Storage;
 using MyDriver.Windows.Commands;
 using MyDriver.Windows.Devices;
 using MyDriver.Windows.Drivers;
+using MyDriver.Windows.Health;
 using MyDriver.Windows.Recovery;
 using MyDriver.Windows.Security;
+using MyDriver.Windows.Update;
 using MyDriver.Windows.Wmi;
 
 namespace MyDriver.App;
@@ -81,13 +83,15 @@ public partial class App : Application
         themeService.Apply(settings.Theme);
 
         ICommandRunner runner = new CommandRunner(log);
-        var scan = new ScanCoordinator(new WmiDeviceScanner(new WmiService(log), log), log);
+        var scan = new ScanCoordinator(new WmiDeviceScanner(new WmiService(log), log), log,
+            new SystemHealthReader(new EventLogService(log), log));
         var workspace = new WorkspaceService(paths, scan, log);
         var backups = new DriverBackupService(new DismService(runner), new PnpUtilService(runner), log);
         var actions = new DriverActions(environment, workspace, scan, backups, new RestorePointService(log), log);
         var diagnosis = new DiagnosisService(RuleSet.Load(paths.RulesFile, log), scan, workspace, log);
         var repair = new RepairService(workspace, scan, actions,
-            new DeviceControlService(runner), new DriverInstaller(log), new SystemTools(runner, log), log);
+            new DeviceControlService(runner), new DriverInstaller(log), new SystemTools(runner, log),
+            new WindowsUpdateService(log), log);
 
         var settingsViewModel = new SettingsViewModel(environment, themeService, settingsStore, settings);
         var window = new MainWindow

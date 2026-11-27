@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "rules": [
     {
       "id": "cm-1",
@@ -177,6 +177,55 @@
       "title": "Backup driver sudah lama",
       "explanation": "Backup terakhir dibuat {age}. Driver mungkin sudah berubah sejak itu.",
       "actions": ["backupNow"]
+    },
+    {
+      "id": "tdr",
+      "match": { "type": "tdr", "windowDays": 7, "criticalCount": 3 },
+      "level": "warning",
+      "title": "{device} sempat berhenti merespons",
+      "explanation": "Kartu grafis berhenti merespons lalu pulih kembali sebanyak {count} kali dalam 7 hari terakhir (terakhir {date}). Biasanya layar berkedip atau gelap sesaat.",
+      "actions": ["rollbackToSnapshot", "windowsUpdate", "manufacturerSite"]
+    },
+    {
+      "id": "driver-load-failed",
+      "match": { "type": "driverLoadFailed", "windowDays": 7 },
+      "level": "warning",
+      "downgradeWhenDeviceNormal": true,
+      "title": "Driver {device} gagal dimuat saat Windows menyala",
+      "explanation": "Windows gagal memuat driver {driver} untuk perangkat ini sebanyak {count} kali dalam 7 hari terakhir (terakhir {date}).",
+      "actions": ["uninstallAndRescan", "installFromBackup", "windowsUpdate"]
+    },
+    {
+      "id": "crash-driver",
+      "match": { "type": "bugCheck", "cause": "driver", "windowDays": 30 },
+      "level": "critical",
+      "title": "Komputer mengalami blue screen pada {date}",
+      "explanation": "{meaning} {suspect}",
+      "actions": ["rollbackToSnapshot", "windowsUpdate", "copyHardwareId", "systemRestore"]
+    },
+    {
+      "id": "crash-hardware",
+      "match": { "type": "bugCheck", "cause": "hardware", "windowDays": 30 },
+      "level": "critical",
+      "title": "Komputer mengalami blue screen karena hardware pada {date}",
+      "explanation": "{meaning} Kemungkinan besar driver bukan penyebabnya.",
+      "actions": ["checkHardware", "checkPower"]
+    },
+    {
+      "id": "whea",
+      "match": { "type": "whea", "windowDays": 30 },
+      "level": "critical",
+      "title": "Hardware melaporkan kesalahan",
+      "explanation": "Hardware komputer (prosesor, RAM, atau jalur PCIe) melaporkan kesalahan {count} kali dalam 30 hari terakhir (terakhir {date}). Driver kemungkinan bukan penyebabnya.",
+      "actions": ["checkHardware", "checkPower"]
+    },
+    {
+      "id": "unexpected-shutdown",
+      "match": { "type": "unexpectedShutdown", "windowDays": 7 },
+      "level": "warning",
+      "title": "Komputer mati mendadak",
+      "explanation": "Windows mati tanpa dimatikan dengan benar sebanyak {count} kali dalam 7 hari terakhir (terakhir {date}).",
+      "actions": ["checkPower"]
     }
   ]
 }

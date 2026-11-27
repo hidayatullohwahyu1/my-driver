@@ -1,6 +1,8 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using MyDriver.Core.Devices;
+using MyDriver.Core.Diagnosis;
 using MyDriver.Core.Logging;
+using MyDriver.Windows.Health;
 
 namespace MyDriver.App.Services;
 
@@ -11,14 +13,20 @@ namespace MyDriver.App.Services;
 public sealed partial class ScanCoordinator : ObservableObject
 {
     private readonly IDeviceScanner _scanner;
+    private readonly SystemHealthReader? _health;
     private readonly ILogService _log;
     private int _generation;
 
-    public ScanCoordinator(IDeviceScanner scanner, ILogService log)
+    public ScanCoordinator(IDeviceScanner scanner, ILogService log, SystemHealthReader? health = null)
     {
         _scanner = scanner;
+        _health = health;
         _log = log;
     }
+
+    /// <summary>Log kejadian dan blue screen, dibaca di latar setiap kali scan.</summary>
+    [ObservableProperty]
+    private SystemHealth? _systemHealth;
 
     [ObservableProperty]
     private ScanResult? _lastResult;
@@ -62,6 +70,7 @@ public sealed partial class ScanCoordinator : ObservableObject
         }
 
         IsCheckingSignatures = true;
+        var healthTask = ReadHealthAsync(result, generation);
         try
         {
             var withSignatures = await _scanner.AddSignaturesAsync(result);
@@ -81,6 +90,27 @@ public sealed partial class ScanCoordinator : ObservableObject
             {
                 IsCheckingSignatures = false;
             }
+        }
+        await healthTask;
+    }
+
+    private async Task ReadHealthAsync(ScanResult result, int generation)
+    {
+        if (_health is null)
+        {
+            return;
+        }
+        try
+        {
+            var health = await _health.ReadAsync(result.Devices.Select(d => d.Service));
+            if (generation == _generation)
+            {
+                SystemHealth = health;
+            }
+        }
+        catch (Exception ex)
+        {
+            _log.Warning("Log kejadian Windows tidak bisa dibaca.", ex);
         }
     }
 }

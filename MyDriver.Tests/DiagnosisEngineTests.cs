@@ -262,6 +262,7 @@ public class DiagnosisEngineTests
 
         var triggered = Diagnose(Scan(devices), noBackup: true).Findings
             .Concat(Diagnose(Scan(), lastBackup: Now.AddDays(-200)).Findings)
+            .Concat(new DiagnosisEngine(Rules).Diagnose(new DiagnosisInput(Scan(), null, RecentBackup, Now, Health: SystemHealthTests.SampleHealth(Now))).Findings)
             .Select(f => f.RuleId)
             .ToHashSet();
 

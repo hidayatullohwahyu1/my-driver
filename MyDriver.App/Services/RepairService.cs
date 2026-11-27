@@ -6,6 +6,7 @@ using MyDriver.Core.Repair;
 using MyDriver.Windows.Commands;
 using MyDriver.Windows.Devices;
 using MyDriver.Windows.Drivers;
+using MyDriver.Windows.Update;
 
 namespace MyDriver.App.Services;
 
@@ -22,8 +23,8 @@ public sealed record RepairOutcome(bool Ran, bool Success, bool RebootRequired =
 /// </summary>
 public sealed class RepairService
 {
-    /// <summary>Aksi bertombol yang belum dibuat (Windows Update menyusul di Tahap 6).</summary>
-    public static readonly IReadOnlySet<string> NotYetAvailable = new HashSet<string> { ActionCatalog.WindowsUpdate };
+    /// <summary>Aksi bertombol yang belum dibuat. Sejak Tahap 6 semuanya tersedia.</summary>
+    public static readonly IReadOnlySet<string> NotYetAvailable = new HashSet<string>();
 
     private readonly WorkspaceService _workspace;
     private readonly ScanCoordinator _scan;
@@ -31,11 +32,13 @@ public sealed class RepairService
     private readonly DeviceControlService _devices;
     private readonly DriverInstaller _installer;
     private readonly SystemTools _system;
+    private readonly WindowsUpdateService _windowsUpdate;
     private readonly ILogService _log;
 
     public RepairService(
         WorkspaceService workspace, ScanCoordinator scan, DriverActions driverActions,
-        DeviceControlService devices, DriverInstaller installer, SystemTools system, ILogService log)
+        DeviceControlService devices, DriverInstaller installer, SystemTools system,
+        WindowsUpdateService windowsUpdate, ILogService log)
     {
         _workspace = workspace;
         _scan = scan;
@@ -43,6 +46,7 @@ public sealed class RepairService
         _devices = devices;
         _installer = installer;
         _system = system;
+        _windowsUpdate = windowsUpdate;
         _log = log;
     }
 
@@ -76,6 +80,11 @@ public sealed class RepairService
         if (!_driverActions.CheckReady())
         {
             return RepairOutcome.NotRun;
+        }
+
+        if (actionId == ActionCatalog.WindowsUpdate)
+        {
+            return await WindowsUpdateAsync(finding, info, device!);
         }
 
         var check = ActionPolicy.Check(actionId, device);
@@ -117,6 +126,75 @@ public sealed class RepairService
             }
 
             var result = await RunAsync(actionId, device!, infPath);
+            outcome = Record(finding, info, result, restorePoint, rescan: true);
+        });
+        DriverActions.NotifyIfBusy(started);
+
+        if (outcome.Ran)
+        {
+            await _scan.ScanAsync();
+        }
+        return outcome;
+    }
+
+    /// <summary>
+    /// Cari di Windows Update: mencari driver resmi yang cocok dengan Hardware ID perangkat,
+    /// menampilkan judul dan tanggalnya, lalu (setelah konfirmasi dan restore point) mengunduh dan memasangnya.
+    /// </summary>
+    private async Task<RepairOutcome> WindowsUpdateAsync(Finding finding, ActionInfo info, DeviceInfo device)
+    {
+        DriverUpdateSearch? search = null;
+        var started = await _workspace.RunExclusiveAsync("Mencari driver di Windows Update… Ini bisa makan 1–3 menit.",
+            async () => search = await _windowsUpdate.SearchAsync());
+        DriverActions.NotifyIfBusy(started);
+        if (!started || search is null)
+        {
+            return RepairOutcome.NotRun;
+        }
+        if (!search.Success)
+        {
+            return Record(finding, info, new DriverOperationResult(false, search.Error ?? "Pencarian Windows Update gagal."), null, rescan: false);
+        }
+
+        var matches = WindowsUpdateService.MatchDevice(search.Updates, device);
+        if (matches.Count == 0)
+        {
+            var none = new DriverOperationResult(false,
+                $"Windows Update tidak punya driver yang lebih baru untuk {device.Name}. Coba rekomendasi berikutnya.");
+            return Record(finding, info, none, null, rescan: false, quiet: true);
+        }
+
+        var update = matches[0];
+        var lines = new List<string>
+        {
+            $"Pasang driver dari Windows Update untuk {device.Name}?",
+            string.Empty,
+            update.Title,
+        };
+        if (update.DriverDate is { } date)
+        {
+            lines.Add($"Tanggal driver: {Format.Date(date)} (sekarang: {(device.DriverDate is { } now ? Format.Date(now) : "belum ada driver")}).");
+        }
+        if (update.DownloadBytes > 0)
+        {
+            lines.Add($"Ukuran unduhan: {Format.Bytes(update.DownloadBytes)}.");
+        }
+        lines.Add(ActionPolicy.Impact(device));
+        lines.Add("Restore point dibuat lebih dulu.");
+        if (!Dialogs.Confirm(string.Join("\n", lines)))
+        {
+            return RepairOutcome.NotRun;
+        }
+
+        var outcome = RepairOutcome.NotRun;
+        started = await _workspace.RunExclusiveAsync($"Mengunduh dan memasang {update.Title}…", async () =>
+        {
+            var restorePoint = await _driverActions.EnsureRestorePointAsync($"My Driver!: Windows Update - {device.Name}");
+            if (restorePoint is null)
+            {
+                return;
+            }
+            var result = await _windowsUpdate.InstallAsync(update);
             outcome = Record(finding, info, result, restorePoint, rescan: true);
         });
         DriverActions.NotifyIfBusy(started);
@@ -218,7 +296,8 @@ public sealed class RepairService
             : $"Belum ada backup yang berisi driver {device.Name}. Coba rekomendasi berikutnya.");
     }
 
-    private RepairOutcome Record(Finding finding, ActionInfo info, DriverOperationResult result, string? restorePoint, bool rescan)
+    private RepairOutcome Record(
+        Finding finding, ActionInfo info, DriverOperationResult result, string? restorePoint, bool rescan, bool quiet = false)
     {
         _log.Info($"Aksi {info.Id} untuk {finding.Device?.Name ?? finding.Title}: {(result.Success ? "berhasil" : "gagal")} - {result.Message}");
         _workspace.AddHistory(new HistoryEntry
@@ -235,7 +314,11 @@ public sealed class RepairService
             Commands = result.Command is { } c ? [c.CommandLine] : [],
         });
 
-        if (!result.Success)
+        if (!result.Success && quiet)
+        {
+            Dialogs.Info(result.Message);
+        }
+        else if (!result.Success)
         {
             Dialogs.Error(result.Message + "\n\nRincian ada di halaman Riwayat dan folder log.");
         }

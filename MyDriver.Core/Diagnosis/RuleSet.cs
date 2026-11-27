@@ -20,10 +20,16 @@ public static class MatchTypes
     public const string OldDriver = "oldDriver";
     public const string BackupMissing = "backupMissing";
     public const string BackupOld = "backupOld";
+    public const string Tdr = "tdr";
+    public const string DriverLoadFailed = "driverLoadFailed";
+    public const string BugCheck = "bugCheck";
+    public const string Whea = "whea";
+    public const string UnexpectedShutdown = "unexpectedShutdown";
 
     public static readonly IReadOnlySet<string> All = new HashSet<string>(StringComparer.Ordinal)
     {
         DeviceError, UnsignedDriver, OldDriver, BackupMissing, BackupOld,
+        Tdr, DriverLoadFailed, BugCheck, Whea, UnexpectedShutdown,
     };
 }
 
@@ -46,6 +52,15 @@ public sealed record RuleMatch
     /// <summary>backupOld: umur maksimal backup (hari).</summary>
     public int? MaxAgeDays { get; init; }
 
+    /// <summary>Aturan log kejadian: hanya kejadian dalam N hari terakhir.</summary>
+    public int? WindowDays { get; init; }
+
+    /// <summary>tdr: naik ke tingkat merah bila terjadi sebanyak ini dalam jendela waktu.</summary>
+    public int? CriticalCount { get; init; }
+
+    /// <summary>bugCheck: "driver" (termasuk penyebab tidak pasti) atau "hardware".</summary>
+    public string? Cause { get; init; }
+
     public bool MatchesCode(int code) => Code == code || Codes?.Contains(code) == true;
 }
 
@@ -66,6 +81,9 @@ public sealed record DiagnosisRule
 
     /// <summary>Temuan disembunyikan secara bawaan (mis. perangkat tidak tersambung).</summary>
     public bool HiddenByDefault { get; init; }
+
+    /// <summary>Turun ke tingkat info bila perangkat terkait saat ini berfungsi normal.</summary>
+    public bool DowngradeWhenDeviceNormal { get; init; }
 }
 
 /// <summary>Isi <c>rules.json</c>.</summary>
