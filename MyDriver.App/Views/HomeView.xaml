@@ -6,9 +6,58 @@
              xmlns:vm="clr-namespace:MyDriver.App.ViewModels"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=vm:HomeViewModel}">
-    <StackPanel MaxWidth="900" HorizontalAlignment="Left">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel MaxWidth="900" HorizontalAlignment="Left" Margin="36,30">
         <TextBlock Style="{StaticResource PageTitleText}" Text="Beranda" />
         <TextBlock Style="{StaticResource PageSubtitleText}" Text="Ringkasan kesehatan driver di komputer ini." />
+
+        <!-- Alur pertama kali di komputer baru -->
+        <Border Style="{StaticResource Card}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1.5"
+                Visibility="{Binding ShowOnboarding, Converter={StaticResource BoolToVisibility}}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Style="{StaticResource IconText}" FontSize="26" VerticalAlignment="Top" Margin="0,2,18,0"
+                           Foreground="{DynamicResource AccentBrush}" Text="&#xE7F8;" />
+
+                <!-- Langkah 1: apakah semua normal? -->
+                <StackPanel Grid.Column="1" Visibility="{Binding IsAskHealthy, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Style="{StaticResource SectionTitleText}" Margin="0,0,0,4">
+                        <Run Text="Komputer baru terdeteksi:" />
+                        <Run Text="{Binding ComputerName, Mode=OneWay}" />
+                    </TextBlock>
+                    <TextBlock Style="{StaticResource BodyText}"
+                               Text="Apakah semua perangkat saat ini berfungsi normal (WiFi, suara, layar, kamera, Bluetooth)? Jika ya, kondisi ini disimpan sebagai acuan sehat untuk perbandingan dan pemulihan nanti." />
+                    <TextBlock Style="{StaticResource CaptionText}" Margin="0,6,0,0" Foreground="{DynamicResource StatusWarningBrush}"
+                               Text="{Binding ProblemNote}" Visibility="{Binding ProblemNote, Converter={StaticResource NullToCollapsed}}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                        <Button Padding="16,7" Style="{DynamicResource AccentButtonStyle}" Content="Ya, semuanya normal"
+                                Command="{Binding AnswerHealthyCommand}" />
+                        <Button Padding="16,7" Margin="8,0,0,0" Content="Belum / tidak yakin"
+                                Command="{Binding AnswerNotHealthyCommand}" />
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Langkah 2: tawaran backup -->
+                <StackPanel Grid.Column="1" Visibility="{Binding IsOfferBackup, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Style="{StaticResource SectionTitleText}" Margin="0,0,0,4" Text="Backup driver sekarang? (disarankan)" />
+                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding OfferBackupIntro}" Margin="0,0,0,4" />
+                    <TextBlock Style="{StaticResource BodyText}"
+                               Text="Backup menyimpan salinan driver komputer ini, sehingga driver bisa dipasang ulang tanpa internet bila nanti bermasalah. Prosesnya beberapa menit." />
+                    <TextBlock Style="{StaticResource CaptionText}" Margin="0,6,0,0" Foreground="{DynamicResource StatusWarningBrush}"
+                               Text="Backup butuh hak Administrator. Anda bisa melakukannya nanti dari halaman Backup."
+                               Visibility="{Binding IsReadOnly, Converter={StaticResource BoolToVisibility}}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                        <Button Padding="16,7" Style="{DynamicResource AccentButtonStyle}" Content="Backup sekarang"
+                                Command="{Binding BackupFromOnboardingCommand}" IsEnabled="{Binding CanBackup}" />
+                        <Button Padding="16,7" Margin="8,0,0,0" Content="Nanti saja"
+                                Command="{Binding SkipBackupCommand}" />
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+        </Border>
 
         <!-- Status besar: hijau / kuning / merah. Abu-abu = belum dipindai. -->
         <Border Style="{StaticResource Card}" Padding="28">
@@ -32,12 +81,22 @@
                                Foreground="{DynamicResource TextSecondaryBrush}" Text="{Binding StatusDescription}" />
                 </StackPanel>
 
-                <Button Grid.Column="2" VerticalAlignment="Center" Padding="20,10" IsEnabled="False"
-                        Style="{DynamicResource AccentButtonStyle}"
-                        ToolTipService.ShowOnDisabled="True" ToolTip="Tersedia mulai Tahap 2">
+                <Button Grid.Column="2" VerticalAlignment="Center" Padding="20,10"
+                        Style="{DynamicResource AccentButtonStyle}" Command="{Binding ScanCommand}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Style="{StaticResource IconText}" FontSize="14" Text="&#xE721;" Margin="0,0,8,0" />
-                        <TextBlock Text="Scan sekarang" />
+                        <TextBlock>
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="Scan sekarang" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsScanning}" Value="True">
+                                            <Setter Property="Text" Value="Memindai…" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
                     </StackPanel>
                 </Button>
             </Grid>
@@ -46,8 +105,8 @@
         <UniformGrid Columns="3">
             <Border Style="{StaticResource Card}" Margin="0,0,6,12">
                 <StackPanel>
-                    <TextBlock Style="{StaticResource CaptionText}" Text="Jumlah temuan" />
-                    <TextBlock Style="{StaticResource SectionTitleText}" Margin="0,6,0,0" Text="{Binding FindingCountText}" />
+                    <TextBlock Style="{StaticResource CaptionText}" Text="Perangkat tersambung" />
+                    <TextBlock Style="{StaticResource SectionTitleText}" Margin="0,6,0,0" Text="{Binding DeviceCountText}" />
                 </StackPanel>
             </Border>
             <Border Style="{StaticResource Card}" Margin="6,0,6,12">
@@ -64,4 +123,5 @@
             </Border>
         </UniformGrid>
     </StackPanel>
+    </ScrollViewer>
 </UserControl>

@@ -6,7 +6,8 @@
              xmlns:vm="clr-namespace:MyDriver.App.ViewModels"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=vm:SettingsViewModel}">
-    <StackPanel MaxWidth="900" HorizontalAlignment="Left">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel MaxWidth="900" HorizontalAlignment="Left" Margin="36,30">
         <TextBlock Style="{StaticResource PageTitleText}" Text="Pengaturan" />
         <TextBlock Style="{StaticResource PageSubtitleText}" Text="Tampilan, folder data, dan informasi aplikasi." />
 
@@ -60,4 +61,5 @@
             <Run Text="My Driver! versi" /> <Run Text="{Binding AppVersion, Mode=OneWay}" />
         </TextBlock>
     </StackPanel>
+    </ScrollViewer>
 </UserControl>

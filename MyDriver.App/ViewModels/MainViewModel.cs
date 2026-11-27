@@ -11,17 +11,19 @@ public sealed partial class MainViewModel : ObservableObject
 {
     private readonly ElevationService _elevation;
 
-    public MainViewModel(AppEnvironment environment, ElevationService elevation, SettingsViewModel settings)
+    public MainViewModel(
+        AppEnvironment environment, ElevationService elevation, ScanCoordinator scan,
+        WorkspaceService workspace, DriverActions actions, SettingsViewModel settings)
     {
         _elevation = elevation;
         Environment = environment;
 
         Items = new ObservableCollection<NavigationItem>
         {
-            new("Beranda", "", new HomeViewModel(environment)),
+            new("Beranda", "", new HomeViewModel(environment, scan, workspace, actions)),
             new("Masalah", "", new ProblemsViewModel()),
-            new("Perangkat", "", new DevicesViewModel()),
-            new("Backup", "", new BackupViewModel()),
+            new("Perangkat", "", new DevicesViewModel(scan)),
+            new("Backup", "", new BackupViewModel(workspace, scan, actions)),
             new("Riwayat", "", new HistoryViewModel()),
             new("Pengaturan", "", settings),
         };

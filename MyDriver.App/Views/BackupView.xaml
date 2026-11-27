@@ -1,0 +1,199 @@
+<UserControl x:Class="MyDriver.App.Views.BackupView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:MyDriver.App.ViewModels"
+             mc:Ignorable="d"
+             x:Name="Root"
+             d:DataContext="{d:DesignInstance Type=vm:BackupViewModel}">
+    <UserControl.Resources>
+        <Style x:Key="SmallButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Padding" Value="12,5" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Margin" Value="6,0,0,0" />
+        </Style>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel MaxWidth="900" HorizontalAlignment="Left" Margin="36,30">
+            <TextBlock Style="{StaticResource PageTitleText}" Text="Backup" />
+            <TextBlock Style="{StaticResource PageSubtitleText}"
+                       Text="Cadangan driver dan acuan kondisi sehat, sebagai jalan kembali bila driver bermasalah." />
+
+            <!-- Proses berjalan -->
+            <Border Style="{StaticResource InfoBanner}" CornerRadius="8" Margin="0,0,0,12"
+                    Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel>
+                    <TextBlock FontWeight="SemiBold" Text="{Binding BusyText}" TextWrapping="Wrap" />
+                    <ProgressBar IsIndeterminate="True" Height="4" Margin="0,8,0,0" />
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource WarningBanner}" CornerRadius="8" Margin="0,0,0,12"
+                    Visibility="{Binding StorageError, Converter={StaticResource NullToCollapsed}}">
+                <TextBlock Text="{Binding StorageError}" TextWrapping="Wrap" />
+            </Border>
+
+            <!-- Snapshot sehat -->
+            <Border Style="{StaticResource Card}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock FontSize="24" Margin="0,2,16,0" VerticalAlignment="Top">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource IconText}">
+                                <Setter Property="Text" Value="&#xE9CE;" />
+                                <Setter Property="Foreground" Value="{DynamicResource StatusUnknownBrush}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasSnapshot}" Value="True">
+                                        <Setter Property="Text" Value="&#xE73E;" />
+                                        <Setter Property="Foreground" Value="{DynamicResource StatusSafeBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource SectionTitleText}" Margin="0,0,0,2" Text="Snapshot sehat" />
+                        <TextBlock Style="{StaticResource CaptionText}" Text="{Binding SnapshotText}" />
+                    </StackPanel>
+                    <Button Grid.Column="2" VerticalAlignment="Center" Padding="14,7" Margin="16,0,0,0"
+                            Content="Tandai kondisi sekarang sebagai sehat"
+                            Command="{Binding MarkHealthyCommand}" IsEnabled="{Binding CanMarkHealthy}"
+                            ToolTip="Simpan daftar driver saat ini sebagai acuan kondisi sehat" />
+                </Grid>
+            </Border>
+
+            <!-- Backup sekarang -->
+            <Border Style="{StaticResource Card}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Style="{StaticResource IconText}" FontSize="24" Margin="0,2,16,0" VerticalAlignment="Top"
+                               Foreground="{DynamicResource AccentBrush}" Text="&#xE777;" />
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource SectionTitleText}" Margin="0,0,0,2" Text="Backup driver" />
+                        <TextBlock Style="{StaticResource CaptionText}"
+                                   Text="Menyimpan salinan semua driver pihak ketiga (bukan bawaan Windows) ke folder data komputer ini. Butuh beberapa menit." />
+                        <TextBlock Style="{StaticResource CaptionText}" Margin="0,6,0,0" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource StatusWarningBrush}"
+                                   Text="Backup dan pemulihan butuh hak Administrator."
+                                   Visibility="{Binding IsReadOnly, Converter={StaticResource BoolToVisibility}}" />
+                    </StackPanel>
+                    <Button Grid.Column="2" VerticalAlignment="Center" Padding="16,8" Margin="16,0,0,0"
+                            Style="{DynamicResource AccentButtonStyle}"
+                            Command="{Binding BackupNowCommand}" IsEnabled="{Binding CanModify}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource IconText}" FontSize="14" Text="&#xE74E;" Margin="0,0,8,0" />
+                            <TextBlock Text="Backup sekarang" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+            </Border>
+
+            <!-- Daftar backup -->
+            <Grid Margin="0,12,0,8">
+                <TextBlock Style="{StaticResource SectionTitleText}" Text="Daftar backup" VerticalAlignment="Center" />
+                <Button HorizontalAlignment="Right" Style="{StaticResource SmallButton}" Content="Buka folder backup"
+                        Command="{Binding OpenFolderCommand}" IsEnabled="{Binding HasScan}" />
+            </Grid>
+
+            <Border Style="{StaticResource WarningBanner}" CornerRadius="8" Margin="0,0,0,12"
+                    Visibility="{Binding HasOldBackups, Converter={StaticResource BoolToVisibility}}">
+                <Grid>
+                    <TextBlock Text="{Binding OldBackupText}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,180,0" />
+                    <Button HorizontalAlignment="Right" Style="{StaticResource SmallButton}" Content="Hapus backup lama"
+                            Command="{Binding DeleteOldBackupsCommand}" IsEnabled="{Binding HasScan}" />
+                </Grid>
+            </Border>
+
+            <TextBlock Margin="2,0,0,12" Text="Belum ada backup untuk komputer ini.">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock" BasedOn="{StaticResource CaptionText}">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasBackups}" Value="True">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+
+            <ItemsControl ItemsSource="{Binding Backups}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type vm:BackupItemViewModel}">
+                        <Border Style="{StaticResource Card}" Padding="16,14">
+                            <StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="{Binding Title}" />
+                                            <Border Margin="8,0,0,0" Padding="6,1" CornerRadius="4" VerticalAlignment="Center"
+                                                    Background="{DynamicResource WarningBannerBackgroundBrush}"
+                                                    Visibility="{Binding IsOld, Converter={StaticResource BoolToVisibility}}">
+                                                <TextBlock FontSize="11" Foreground="{DynamicResource WarningBannerForegroundBrush}" Text="Lama" />
+                                            </Border>
+                                        </StackPanel>
+                                        <TextBlock Style="{StaticResource CaptionText}" Margin="0,2,0,0" Text="{Binding Subtitle}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button Style="{StaticResource SmallButton}" Content="Buka folder"
+                                                Command="{Binding DataContext.OpenFolderCommand, ElementName=Root}" CommandParameter="{Binding}" />
+                                        <Button Style="{StaticResource SmallButton}" Content="Pulihkan semua"
+                                                Command="{Binding DataContext.RestoreAllCommand, ElementName=Root}" CommandParameter="{Binding}"
+                                                IsEnabled="{Binding DataContext.CanModify, ElementName=Root}"
+                                                ToolTip="Pasang ulang semua driver dari backup ini" />
+                                        <Button Style="{StaticResource SmallButton}" Content="Hapus"
+                                                Command="{Binding DataContext.DeleteCommand, ElementName=Root}" CommandParameter="{Binding}"
+                                                IsEnabled="{Binding DataContext.HasScan, ElementName=Root}" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <Expander Margin="0,10,0,0" Header="{Binding PackagesHeader}" IsExpanded="{Binding IsExpanded}"
+                                          Visibility="{Binding IsComplete, Converter={StaticResource BoolToVisibility}}">
+                                    <ItemsControl ItemsSource="{Binding Packages}" Margin="0,8,0,0">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type vm:PackageItemViewModel}">
+                                                <Grid Margin="0,0,0,10">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel>
+                                                        <TextBlock Style="{StaticResource BodyText}" Text="{Binding Name}" />
+                                                        <TextBlock Style="{StaticResource CaptionText}" Text="{Binding Detail}" />
+                                                        <TextBlock Style="{StaticResource CaptionText}" Text="{Binding DevicesText}" />
+                                                    </StackPanel>
+                                                    <Button Grid.Column="1" Style="{StaticResource SmallButton}" VerticalAlignment="Center"
+                                                            Content="Pasang dari backup"
+                                                            Command="{Binding DataContext.RestorePackageCommand, ElementName=Root}" CommandParameter="{Binding}"
+                                                            IsEnabled="{Binding DataContext.CanModify, ElementName=Root}" />
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </Expander>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <TextBlock Style="{StaticResource CaptionText}" Margin="2,4,0,0" TextWrapping="Wrap">
+                <Run Text="Folder data komputer ini:" />
+                <Run Text="{Binding DataFolder, Mode=OneWay}" />
+            </TextBlock>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

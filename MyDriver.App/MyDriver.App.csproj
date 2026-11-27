@@ -24,6 +24,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Proyek WPF tidak mengimpor System.IO secara otomatis -->
+    <Using Include="System.IO" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\MyDriver.Core\MyDriver.Core.csproj" />
     <ProjectReference Include="..\MyDriver.Windows\MyDriver.Windows.csproj" />
   </ItemGroup>

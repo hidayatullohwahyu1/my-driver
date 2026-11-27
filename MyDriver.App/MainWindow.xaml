@@ -100,9 +100,8 @@
                 </StackPanel>
             </Border>
 
-            <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
-                <ContentControl Margin="36,30,36,30" Content="{Binding SelectedItem.Page}" Focusable="False" />
-            </ScrollViewer>
+            <!-- Setiap halaman mengatur gulirnya sendiri -->
+            <ContentControl Content="{Binding SelectedItem.Page}" Focusable="False" />
         </DockPanel>
     </Grid>
 </Window>

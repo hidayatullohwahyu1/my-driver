@@ -1,0 +1,342 @@
+<UserControl x:Class="MyDriver.App.Views.DevicesView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:MyDriver.App.ViewModels"
+             xmlns:dev="clr-namespace:MyDriver.Core.Devices;assembly=MyDriver.Core"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:DevicesViewModel}">
+    <UserControl.Resources>
+        <Style x:Key="DetailLabel" TargetType="TextBlock" BasedOn="{StaticResource CaptionText}">
+            <Setter Property="Margin" Value="0,0,16,10" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+        </Style>
+        <Style x:Key="DetailValue" TargetType="TextBlock" BasedOn="{StaticResource BodyText}">
+            <Setter Property="Margin" Value="0,0,0,10" />
+        </Style>
+        <Style x:Key="SmallButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Padding" Value="10,4" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+
+        <!-- Ikon status kecil di depan nama perangkat -->
+        <Style x:Key="StatusGlyph" TargetType="TextBlock" BasedOn="{StaticResource IconText}">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Status}" Value="{x:Static dev:DeviceStatus.Problem}">
+                    <Setter Property="Text" Value="&#xE7BA;" />
+                    <Setter Property="Foreground" Value="{DynamicResource StatusCriticalBrush}" />
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="{x:Static dev:DeviceStatus.Disabled}">
+                    <Setter Property="Text" Value="&#xE711;" />
+                    <Setter Property="Foreground" Value="{DynamicResource StatusWarningBrush}" />
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="StatusDot" TargetType="Ellipse">
+            <Setter Property="Width" Value="10" />
+            <Setter Property="Height" Value="10" />
+            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Fill" Value="{DynamicResource StatusSafeBrush}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Status}" Value="{x:Static dev:DeviceStatus.Problem}">
+                    <Setter Property="Fill" Value="{DynamicResource StatusCriticalBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="{x:Static dev:DeviceStatus.Disabled}">
+                    <Setter Property="Fill" Value="{DynamicResource StatusWarningBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="{x:Static dev:DeviceStatus.NotConnected}">
+                    <Setter Property="Fill" Value="{DynamicResource StatusUnknownBrush}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Margin="36,30,36,24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Judul + tombol scan -->
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+                <TextBlock Style="{StaticResource PageTitleText}" Text="Perangkat" />
+                <TextBlock Style="{StaticResource PageSubtitleText}" Margin="0,0,0,16" Text="{Binding SummaryText}" />
+            </StackPanel>
+            <Button Grid.Column="1" VerticalAlignment="Top" Padding="16,8" Margin="0,4,0,0"
+                    Style="{DynamicResource AccentButtonStyle}" Command="{Binding ScanCommand}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Style="{StaticResource IconText}" FontSize="14" Text="&#xE72C;" Margin="0,0,8,0" />
+                    <TextBlock>
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="Scan ulang" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsScanning}" Value="True">
+                                        <Setter Property="Text" Value="Memindai…" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+            </Button>
+        </Grid>
+
+        <!-- Info komputer -->
+        <Border Grid.Row="1" Style="{StaticResource Card}" Padding="16,12"
+                Visibility="{Binding HasComputer, Converter={StaticResource BoolToVisibility}}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Style="{StaticResource IconText}" FontSize="22" Margin="0,0,14,0"
+                           Foreground="{DynamicResource TextSecondaryBrush}" Text="&#xE7F8;" />
+                <StackPanel Grid.Column="1">
+                    <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold">
+                        <Run Text="{Binding Computer.Manufacturer, Mode=OneWay}" />
+                        <Run Text="{Binding Computer.Model, Mode=OneWay}" />
+                    </TextBlock>
+                    <TextBlock Style="{StaticResource CaptionText}">
+                        <Run Text="BIOS" /> <Run Text="{Binding Computer.BiosText, Mode=OneWay}" />
+                        <Run Text="  ·  " />
+                        <Run Text="{Binding Computer.WindowsText, Mode=OneWay}" />
+                    </TextBlock>
+                </StackPanel>
+                <Button Grid.Column="2" Style="{StaticResource SmallButton}" VerticalAlignment="Center"
+                        Command="{Binding CopyComputerInfoCommand}"
+                        ToolTip="Salin merek, model, nomor seri, BIOS, dan versi Windows untuk dicari di situs resmi produsen">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Style="{StaticResource IconText}" FontSize="12" Text="&#xE8C8;" Margin="0,0,6,0" />
+                        <TextBlock Text="Salin" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- Pencarian dan filter -->
+        <Grid Grid.Row="2" Margin="0,0,0,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" MaxWidth="420" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Grid>
+                <TextBox x:Name="SearchBox" Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged, Delay=200}"
+                         Padding="32,6,8,6" VerticalContentAlignment="Center"
+                         AutomationProperties.Name="Cari perangkat" />
+                <TextBlock Style="{StaticResource IconText}" FontSize="13" Margin="11,0,0,0" IsHitTestVisible="False"
+                           HorizontalAlignment="Left" Foreground="{DynamicResource TextSecondaryBrush}" Text="&#xE721;" />
+                <TextBlock Margin="32,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                           Foreground="{DynamicResource TextDisabledBrush}" Text="Cari nama, produsen, atau Hardware ID">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Text, ElementName=SearchBox}" Value="">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </Grid>
+            <CheckBox Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center"
+                      Content="Tampilkan perangkat tidak tersambung" IsChecked="{Binding ShowDisconnected}"
+                      Visibility="{Binding HasDisconnected, Converter={StaticResource BoolToVisibility}}" />
+        </Grid>
+
+        <!-- Pohon perangkat + detail -->
+        <Grid Grid.Row="3">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="5*" MinWidth="280" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="6*" MinWidth="320" />
+            </Grid.ColumnDefinitions>
+
+            <Border Style="{StaticResource Card}" Padding="4" Margin="0">
+                <Grid>
+                    <TreeView x:Name="DeviceTree" ItemsSource="{Binding Groups}" BorderThickness="0" Background="Transparent"
+                              VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
+                              SelectedItemChanged="DeviceTree_SelectedItemChanged"
+                              AutomationProperties.Name="Daftar perangkat per kategori">
+                        <TreeView.ItemContainerStyle>
+                            <Style TargetType="TreeViewItem" BasedOn="{StaticResource {x:Type TreeViewItem}}">
+                                <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                                <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+                            </Style>
+                        </TreeView.ItemContainerStyle>
+                        <TreeView.Resources>
+                            <HierarchicalDataTemplate DataType="{x:Type vm:CategoryGroupViewModel}" ItemsSource="{Binding Devices}">
+                                <StackPanel Orientation="Horizontal" Margin="0,2">
+                                    <TextBlock Style="{StaticResource IconText}" Text="{Binding Glyph}" Margin="0,0,10,0" />
+                                    <TextBlock FontWeight="SemiBold" Text="{Binding Name}" VerticalAlignment="Center" />
+                                    <TextBlock Style="{StaticResource CaptionText}" Margin="8,0,0,0" VerticalAlignment="Center"
+                                               Text="{Binding CountText}" />
+                                    <TextBlock Style="{StaticResource IconText}" FontSize="13" Margin="8,0,0,0"
+                                               Foreground="{DynamicResource StatusCriticalBrush}" Text="&#xE7BA;"
+                                               ToolTip="Ada perangkat bermasalah atau dinonaktifkan di kategori ini"
+                                               Visibility="{Binding HasProblems, Converter={StaticResource BoolToVisibility}}" />
+                                </StackPanel>
+                            </HierarchicalDataTemplate>
+                            <DataTemplate DataType="{x:Type vm:DeviceItemViewModel}">
+                                <StackPanel Orientation="Horizontal" Margin="0,1" ToolTip="{Binding StatusText}">
+                                    <StackPanel.Style>
+                                        <Style TargetType="StackPanel">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Status}" Value="{x:Static dev:DeviceStatus.NotConnected}">
+                                                    <Setter Property="Opacity" Value="0.55" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </StackPanel.Style>
+                                    <TextBlock Style="{StaticResource StatusGlyph}" />
+                                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </TreeView.Resources>
+                    </TreeView>
+
+                    <!-- Scan pertama sedang berjalan -->
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="24"
+                                Visibility="{Binding IsFirstScanRunning, Converter={StaticResource BoolToVisibility}}">
+                        <ProgressBar IsIndeterminate="True" Width="200" Height="4" Margin="0,0,0,12" />
+                        <TextBlock Style="{StaticResource CaptionText}" HorizontalAlignment="Center"
+                                   Text="Membaca semua perangkat dan driver…" />
+                    </StackPanel>
+
+                    <TextBlock Style="{StaticResource CaptionText}" Margin="24" HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Text="Tidak ada perangkat yang cocok dengan pencarian."
+                               Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}" />
+                </Grid>
+            </Border>
+
+            <!-- Detail perangkat -->
+            <Border Grid.Column="2" Style="{StaticResource Card}" Padding="0" Margin="0">
+                <Grid>
+                    <TextBlock Margin="24" HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Text="Pilih perangkat untuk melihat detail drivernya.">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource CaptionText}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasSelection}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                  Visibility="{Binding HasSelection, Converter={StaticResource BoolToVisibility}}">
+                        <StackPanel Margin="20" DataContext="{Binding SelectedDevice}">
+                            <TextBlock FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding Name}" />
+                            <StackPanel Orientation="Horizontal" Margin="0,6,0,18">
+                                <Ellipse Style="{StaticResource StatusDot}" />
+                                <TextBlock Style="{StaticResource BodyText}" Text="{Binding StatusText}" />
+                            </StackPanel>
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Style="{StaticResource DetailLabel}" Text="Kategori" />
+                                <TextBlock Grid.Row="0" Grid.Column="1" Style="{StaticResource DetailValue}" Text="{Binding CategoryText}" />
+                                <TextBlock Grid.Row="1" Style="{StaticResource DetailLabel}" Text="Produsen" />
+                                <TextBlock Grid.Row="1" Grid.Column="1" Style="{StaticResource DetailValue}" Text="{Binding ManufacturerText}" />
+                                <TextBlock Grid.Row="2" Style="{StaticResource DetailLabel}" Text="Versi driver" />
+                                <TextBlock Grid.Row="2" Grid.Column="1" Style="{StaticResource DetailValue}" Text="{Binding DriverVersionText}" />
+                                <TextBlock Grid.Row="3" Style="{StaticResource DetailLabel}" Text="Tanggal driver" />
+                                <TextBlock Grid.Row="3" Grid.Column="1" Style="{StaticResource DetailValue}" Text="{Binding DriverDateText}" />
+                                <TextBlock Grid.Row="4" Style="{StaticResource DetailLabel}" Text="Penyedia driver" />
+                                <TextBlock Grid.Row="4" Grid.Column="1" Style="{StaticResource DetailValue}" Text="{Binding DriverProviderText}" />
+                                <TextBlock Grid.Row="5" Style="{StaticResource DetailLabel}" Text="Tanda tangan" />
+                                <TextBlock Grid.Row="5" Grid.Column="1" Style="{StaticResource DetailValue}" Text="{Binding SignatureText}" />
+                            </Grid>
+
+                            <Expander Header="Detail teknis" Margin="0,8,0,0" HorizontalAlignment="Stretch">
+                                <StackPanel Margin="0,10,0,0">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Grid.Row="0" Style="{StaticResource DetailLabel}" Text="Kode error" />
+                                        <TextBlock Grid.Row="0" Grid.Column="1" Style="{StaticResource DetailValue}" Text="{Binding ErrorCodeText}" />
+                                        <TextBlock Grid.Row="1" Style="{StaticResource DetailLabel}" Text="Kelas" />
+                                        <TextBlock Grid.Row="1" Grid.Column="1" Style="{StaticResource DetailValue}" Text="{Binding PnpClassText}" />
+                                        <TextBlock Grid.Row="2" Style="{StaticResource DetailLabel}" Text="Layanan" />
+                                        <TextBlock Grid.Row="2" Grid.Column="1" Style="{StaticResource DetailValue}" Text="{Binding ServiceText}" />
+                                        <TextBlock Grid.Row="3" Style="{StaticResource DetailLabel}" Text="File INF" />
+                                        <TextBlock Grid.Row="3" Grid.Column="1" Style="{StaticResource DetailValue}" Text="{Binding InfNameText}" />
+                                        <TextBlock Grid.Row="4" Style="{StaticResource DetailLabel}" Text="ID instans" />
+                                        <TextBox Grid.Row="4" Grid.Column="1" Margin="0,0,0,10" IsReadOnly="True" TextWrapping="Wrap"
+                                                 FontFamily="Consolas" FontSize="12" Text="{Binding Device.InstanceId, Mode=OneWay}"
+                                                 AutomationProperties.Name="ID instans" />
+                                    </Grid>
+
+                                    <Grid Margin="0,4,0,6">
+                                        <TextBlock Style="{StaticResource CaptionText}" VerticalAlignment="Center" Text="Hardware ID" />
+                                        <Button HorizontalAlignment="Right" Style="{StaticResource SmallButton}"
+                                                Command="{Binding DataContext.CopyHardwareIdsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                IsEnabled="{Binding HasHardwareIds}"
+                                                ToolTip="Salin semua Hardware ID untuk dicari di situs produsen">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Style="{StaticResource IconText}" FontSize="12" Text="&#xE8C8;" Margin="0,0,6,0" />
+                                                <TextBlock Text="Salin semua" />
+                                            </StackPanel>
+                                        </Button>
+                                    </Grid>
+                                    <TextBox IsReadOnly="True" TextWrapping="NoWrap" FontFamily="Consolas" FontSize="12"
+                                             HorizontalScrollBarVisibility="Auto"
+                                             Text="{Binding HardwareIdsText, Mode=OneWay}"
+                                             AutomationProperties.Name="Daftar Hardware ID" />
+                                </StackPanel>
+                            </Expander>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Pesan galat scan / umpan balik salin -->
+        <StackPanel Grid.Row="4" Margin="0,10,0,0">
+            <TextBlock Foreground="{DynamicResource StatusCriticalBrush}" TextWrapping="Wrap" Text="{Binding ScanError}"
+                       Visibility="{Binding HasScanError, Converter={StaticResource BoolToVisibility}}" />
+            <TextBlock Style="{StaticResource CaptionText}" Text="{Binding Feedback}" />
+        </StackPanel>
+    </Grid>
+</UserControl>

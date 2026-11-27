@@ -5,8 +5,9 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:MyDriver.App.ViewModels"
              mc:Ignorable="d"
-             d:DataContext="{d:DesignInstance Type=vm:DevicesViewModel}">
-    <StackPanel MaxWidth="900" HorizontalAlignment="Left">
+             d:DataContext="{d:DesignInstance Type=vm:ProblemsViewModel}">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel MaxWidth="900" HorizontalAlignment="Left" Margin="36,30">
         <TextBlock Style="{StaticResource PageTitleText}" Text="{Binding Title}" />
         <TextBlock Style="{StaticResource PageSubtitleText}" Text="{Binding Subtitle}" />
 
@@ -30,4 +31,5 @@
             </Grid>
         </Border>
     </StackPanel>
+    </ScrollViewer>
 </UserControl>

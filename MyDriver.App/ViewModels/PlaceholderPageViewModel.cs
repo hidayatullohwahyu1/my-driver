@@ -25,26 +25,6 @@ public sealed class ProblemsViewModel : PlaceholderPageViewModel
     public override string PlannedStage => "Tahap 4 dan 5";
 }
 
-public sealed class DevicesViewModel : PlaceholderPageViewModel
-{
-    public override string Title => "Perangkat";
-    public override string Subtitle => "Semua perangkat di komputer ini, dikelompokkan per kategori.";
-    public override string Glyph => "";
-    public override string PlannedContent =>
-        "Pohon perangkat per kategori (Jaringan, Suara, Layar, USB, Bluetooth, Penyimpanan, Lainnya), ikon status, detail driver, Hardware ID, dan info komputer.";
-    public override string PlannedStage => "Tahap 2";
-}
-
-public sealed class BackupViewModel : PlaceholderPageViewModel
-{
-    public override string Title => "Backup";
-    public override string Subtitle => "Cadangan driver dan snapshot kondisi sehat.";
-    public override string Glyph => "";
-    public override string PlannedContent =>
-        "Tombol backup sekarang, daftar backup per tanggal, restore semua atau per perangkat, dan snapshot sehat.";
-    public override string PlannedStage => "Tahap 3";
-}
-
 public sealed class HistoryViewModel : PlaceholderPageViewModel
 {
     public override string Title => "Riwayat";

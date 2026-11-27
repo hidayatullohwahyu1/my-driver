@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Threading;
 using MyDriver.App.Services;
 using MyDriver.App.ViewModels;
@@ -7,6 +7,9 @@ using MyDriver.Core.Settings;
 using MyDriver.Core.Storage;
 using MyDriver.Windows.Commands;
 using MyDriver.Windows.Security;
+using MyDriver.Windows.Drivers;
+using MyDriver.Windows.Recovery;
+using MyDriver.Windows.Wmi;
 
 namespace MyDriver.App;
 
@@ -20,6 +23,10 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        // Render tanpa GPU. Aplikasi ini dipakai justru saat driver bermasalah, termasuk driver
+        // kartu grafis; dengan render GPU, jendela WPF bisa tampil putih kosong.
+        System.Windows.Media.RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
 
         DataPaths paths;
         try
@@ -54,14 +61,22 @@ public partial class App : Application
 
         CommandRunner = new CommandRunner(log);
 
+        var scan = new ScanCoordinator(new WmiDeviceScanner(new WmiService(log), log), log);
+        var workspace = new WorkspaceService(paths, scan, log);
+        var backups = new DriverBackupService(new DismService(CommandRunner), new PnpUtilService(CommandRunner), log);
+        var actions = new DriverActions(environment, workspace, scan, backups, new RestorePointService(log), log);
+
         var settingsViewModel = new SettingsViewModel(environment, themeService, settingsStore, settings);
         var window = new MainWindow
         {
-            DataContext = new MainViewModel(environment, elevation, settingsViewModel),
+            DataContext = new MainViewModel(environment, elevation, scan, workspace, actions, settingsViewModel),
         };
         themeService.Attach(window);
         MainWindow = window;
         window.Show();
+
+        // Scan pertama langsung saat aplikasi dibuka (hanya membaca, aman tanpa admin).
+        _ = scan.ScanAsync();
     }
 
     protected override void OnExit(ExitEventArgs e)
