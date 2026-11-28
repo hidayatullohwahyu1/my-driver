@@ -65,6 +65,16 @@ public sealed class RepairService
                 return new RepairOutcome(true, ok);
             case ActionCatalog.SystemRestore:
                 return Record(finding, info, _system.OpenSystemRestore(), restorePoint: null, rescan: false);
+            case ActionCatalog.MarkHealthy when device is not null:
+                if (!Dialogs.Confirm($"Tandai driver {device.Name} versi {device.DriverVersion ?? "sekarang"} sebagai sehat?\n\n" +
+                                     "Versi ini menjadi acuan untuk perangkat ini, termasuk untuk \"Kembalikan ke versi snapshot\"."))
+                {
+                    return RepairOutcome.NotRun;
+                }
+                var marked = _workspace.MarkDeviceHealthy(device)
+                    ? new DriverOperationResult(true, $"{device.Name} versi {device.DriverVersion} ditandai sehat.")
+                    : new DriverOperationResult(false, "Belum ada snapshot sehat untuk komputer ini.");
+                return Record(finding, info, marked, null, rescan: true);
             case ActionCatalog.RestartWindows:
                 if (!Dialogs.Confirm("Restart Windows sekarang?\n\nSimpan dan tutup pekerjaan Anda lebih dulu. Windows akan restart dalam 15 detik."))
                 {

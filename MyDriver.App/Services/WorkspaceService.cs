@@ -70,6 +70,19 @@ public sealed partial class WorkspaceService : ObservableObject
         Snapshot = snapshot;
     }
 
+    /// <summary>"Tandai sebagai sehat" untuk satu perangkat: entri snapshot-nya diperbarui ke driver sekarang.</summary>
+    public bool MarkDeviceHealthy(DeviceInfo device)
+    {
+        if (Store is null || Snapshot is null)
+        {
+            return false;
+        }
+        var updated = Snapshot.WithDevice(device);
+        Store.SaveSnapshot(updated);
+        Snapshot = updated;
+        return true;
+    }
+
     public void CompleteOnboarding()
     {
         if (Store is null)

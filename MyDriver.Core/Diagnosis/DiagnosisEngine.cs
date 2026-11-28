@@ -92,6 +92,7 @@ public sealed class DiagnosisEngine
         findings.AddRange(DeviceErrors(input));
         findings.AddRange(DriverConditions(input));
         findings.AddRange(BackupCondition(input));
+        findings.AddRange(SnapshotChanges(input));
         if (input.Health is { } health)
         {
             var devices = new DeviceIndex(input.Scan.Devices, health.ServiceImages);
@@ -182,6 +183,84 @@ public sealed class DiagnosisEngine
             && (input.Now - last).TotalDays > (oldRule.Match.MaxAgeDays ?? 90))
         {
             yield return Create(oldRule, null, Values(null, ("age", AgeText(last, input.Now))));
+        }
+    }
+
+    // ---- Perubahan dibanding snapshot sehat (F8) ----
+
+    /// <summary>Hari tanpa masalah sebelum perubahan driver disarankan untuk ditandai sehat.</summary>
+    public const int DaysBeforeSuggestingHealthy = 3;
+
+    /// <summary>
+    /// Driver berubah, driver baru, dan driver hilang dibanding snapshot sehat, untuk perangkat yang
+    /// berfungsi normal. (Perangkat bermasalah ditangani aturan "perubahan + masalah".)
+    /// </summary>
+    private IEnumerable<Finding> SnapshotChanges(DiagnosisInput input)
+    {
+        if (input.Snapshot is not { } snapshot)
+        {
+            yield break;
+        }
+
+        var changed = RulesOf(MatchTypes.DriverChanged).FirstOrDefault();
+        var added = RulesOf(MatchTypes.DriverNew).FirstOrDefault();
+        var missing = RulesOf(MatchTypes.DriverMissing).FirstOrDefault();
+        var snapshotDate = snapshot.CreatedAt.ToString("d MMMM yyyy", Indonesian);
+
+        foreach (var device in input.Scan.Devices.Where(d => d.IsPresent && d.HasDriver && d.Status == DeviceStatus.Normal))
+        {
+            var healthy = FindInSnapshot(snapshot, device);
+            if (healthy is null)
+            {
+                if (added is not null)
+                {
+                    yield return Create(added, device, Values(device, ("snapshotDate", snapshotDate)));
+                }
+                continue;
+            }
+
+            if (changed is null || string.Equals(healthy.DriverVersion, device.DriverVersion, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var finding = Create(changed, device, Values(device,
+                ("oldVersion", healthy.DriverVersion ?? "tidak diketahui"),
+                ("newVersion", device.DriverVersion ?? "tidak diketahui"),
+                ("snapshotDate", snapshotDate)));
+            var days = input.FirstSeen?.GetValueOrDefault(finding.Key) is { } seen && seen != default
+                ? (int)(input.Now - seen).TotalDays
+                : 0;
+            yield return finding with
+            {
+                Explanation = days >= DaysBeforeSuggestingHealthy
+                    ? finding.Explanation + $" Sudah {days} hari tanpa masalah, jadi versi ini bisa ditandai sehat."
+                    : finding.Explanation,
+                Details = [new("Versi di snapshot", healthy.DriverVersion ?? "–"), new("Versi sekarang", device.DriverVersion ?? "–")],
+            };
+        }
+
+        if (missing is null)
+        {
+            yield break;
+        }
+        foreach (var healthy in snapshot.Drivers)
+        {
+            var ids = new HashSet<string>(healthy.HardwareIds, StringComparer.OrdinalIgnoreCase);
+            var stillThere = input.Scan.Devices.Any(d =>
+                string.Equals(d.InstanceId, healthy.InstanceId, StringComparison.OrdinalIgnoreCase)
+                || d.HardwareIds.Any(ids.Contains));
+            if (stillThere)
+            {
+                continue;
+            }
+
+            var finding = Create(missing, null, Values(null, ("device", healthy.Name), ("snapshotDate", snapshotDate)));
+            yield return finding with
+            {
+                Key = $"{missing.Id}|{healthy.InstanceId}",
+                Details = [new("ID instans", healthy.InstanceId), new("Versi di snapshot", healthy.DriverVersion ?? "–")],
+            };
         }
     }
 

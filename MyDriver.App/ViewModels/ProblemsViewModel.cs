@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.Input;
 using MyDriver.App.Services;
 using MyDriver.Core.Diagnosis;
 using MyDriver.Core.Repair;
+using MyDriver.Core.Reports;
 
 namespace MyDriver.App.ViewModels;
 
@@ -83,6 +84,49 @@ public sealed partial class ProblemsViewModel : ObservableObject
 
     [RelayCommand]
     private Task RescanAsync() => _scan.ScanAsync();
+
+    /// <summary>Menyimpan laporan scan (HTML atau teks) untuk disimpan atau dikirim ke teknisi.</summary>
+    [RelayCommand]
+    private void ExportReport()
+    {
+        if (_scan.LastResult is not { } scan)
+        {
+            Dialogs.Info("Tunggu sampai scan perangkat selesai.");
+            return;
+        }
+
+        var computer = _workspace.Store?.Profile.FolderName ?? "Komputer";
+        var dialog = new Microsoft.Win32.SaveFileDialog
+        {
+            Title = "Simpan laporan My Driver!",
+            FileName = $"Laporan-MyDriver-{computer}-{DateTime.Now:yyyy-MM-dd}",
+            Filter = "Laporan HTML (*.html)|*.html|Teks biasa (*.txt)|*.txt",
+            DefaultExt = ".html",
+            AddExtension = true,
+        };
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        var input = new ReportInput(scan, _diagnosis.Report, DateTime.Now, AppEnvironment.Version,
+            _workspace.LastBackup?.CreatedAt, _workspace.Snapshot?.CreatedAt);
+        var html = !dialog.FileName.EndsWith(".txt", StringComparison.OrdinalIgnoreCase);
+        try
+        {
+            File.WriteAllText(dialog.FileName, html ? ReportBuilder.Html(input) : ReportBuilder.Text(input), new System.Text.UTF8Encoding(true));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Dialogs.Error($"Laporan gagal disimpan: {ex.Message}");
+            return;
+        }
+
+        if (Dialogs.Confirm($"Laporan disimpan:\n{dialog.FileName}\n\nBuka sekarang?"))
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(dialog.FileName) { UseShellExecute = true });
+        }
+    }
 
     [RelayCommand]
     private async Task RunActionAsync(ActionItemViewModel? item)
@@ -298,7 +342,8 @@ public sealed partial class ActionItemViewModel : ObservableObject
 
     public bool IsBlocked => !_check.IsAllowed;
 
-    public bool CanRun => HasButton && IsAvailable && !IsBlocked && (!Info.RequiresAdministrator || _isAdministrator);
+    /// <summary>Tombol admin tetap aktif; saat ditekan tanpa admin, aplikasi menawarkan buka ulang sebagai Administrator.</summary>
+    public bool CanRun => HasButton && IsAvailable && !IsBlocked;
 
     public string ButtonText => Info.Id switch
     {
@@ -310,7 +355,7 @@ public sealed partial class ActionItemViewModel : ObservableObject
     public string? ButtonTooltip =>
         !IsAvailable ? "Pencarian lewat Windows Update menyusul pada tahap berikutnya."
         : IsBlocked ? _check.Reason
-        : Info.RequiresAdministrator && !_isAdministrator ? "Butuh hak Administrator."
+        : Info.RequiresAdministrator && !_isAdministrator ? "Butuh hak Administrator; saat ditekan, Anda ditawari membuka ulang aplikasi sebagai Administrator."
         : null;
 
     /// <summary>Peringatan singkat di bawah langkah (perangkat terlindung).</summary>

@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MyDriver.App.Services;
 using MyDriver.Core.Devices;
+using MyDriver.Core.Settings;
 
 namespace MyDriver.App.ViewModels;
 
@@ -14,9 +15,10 @@ public sealed partial class DevicesViewModel : ObservableObject
     private readonly Dictionary<DeviceCategory, bool> _expanded = new();
     private CancellationTokenSource? _feedbackCts;
 
-    public DevicesViewModel(ScanCoordinator scan)
+    public DevicesViewModel(ScanCoordinator scan, AppSettings settings)
     {
         _scan = scan;
+        _showDisconnected = !settings.HideDisconnectedDevices;
         _scan.PropertyChanged += OnScanChanged;
         Rebuild();
     }

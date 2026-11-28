@@ -84,18 +84,65 @@
                                    Text="Menyimpan salinan semua driver pihak ketiga (bukan bawaan Windows) ke folder data komputer ini. Butuh beberapa menit." />
                         <TextBlock Style="{StaticResource CaptionText}" Margin="0,6,0,0" FontWeight="SemiBold"
                                    Foreground="{DynamicResource StatusWarningBrush}"
-                                   Text="Backup dan pemulihan butuh hak Administrator."
+                                   Text="Backup dan pemulihan butuh hak Administrator. Saat tombol ditekan, Anda ditawari membuka ulang aplikasi sebagai Administrator."
                                    Visibility="{Binding IsReadOnly, Converter={StaticResource BoolToVisibility}}" />
                     </StackPanel>
                     <Button Grid.Column="2" VerticalAlignment="Center" Padding="16,8" Margin="16,0,0,0"
                             Style="{DynamicResource AccentButtonStyle}"
-                            Command="{Binding BackupNowCommand}" IsEnabled="{Binding CanModify}">
+                            Command="{Binding BackupNowCommand}" IsEnabled="{Binding CanModify}" AutomationProperties.Name="Backup sekarang">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Style="{StaticResource IconText}" FontSize="14" Text="&#xE74E;" Margin="0,0,8,0" />
                             <TextBlock Text="Backup sekarang" />
                         </StackPanel>
                     </Button>
                 </Grid>
+            </Border>
+
+            <!-- Pembersihan DriverStore -->
+            <Border Style="{StaticResource Card}" DataContext="{Binding Cleanup}">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource IconText}" FontSize="24" Margin="0,2,16,0" VerticalAlignment="Top"
+                                   Foreground="{DynamicResource TextSecondaryBrush}" Text="&#xE74D;" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource SectionTitleText}" Margin="0,0,0,2" Text="Bersihkan DriverStore" />
+                            <TextBlock Style="{StaticResource CaptionText}"
+                                       Text="Paket driver lama yang tidak dipakai lagi bisa memakan ruang disk. Paket yang masih dipakai dan driver perangkat sistem penting tidak pernah ditawarkan." />
+                            <TextBlock Style="{StaticResource CaptionText}" Margin="0,4,0,0" FontWeight="SemiBold" Text="{Binding SummaryText}" />
+                        </StackPanel>
+                        <Button Grid.Column="2" VerticalAlignment="Center" Padding="14,7" Margin="16,0,0,0"
+                                Content="Periksa paket lama" Command="{Binding CheckCommand}"
+                                IsEnabled="{Binding IsLoading, Converter={StaticResource InverseBool}}" />
+                    </Grid>
+
+                    <ProgressBar IsIndeterminate="True" Height="4" Margin="0,12,0,0"
+                                 Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}" />
+
+                    <StackPanel Margin="0,12,0,0" Visibility="{Binding HasPackages, Converter={StaticResource BoolToVisibility}}">
+                        <ItemsControl ItemsSource="{Binding Packages}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:StorePackageItem}">
+                                    <CheckBox Margin="0,0,0,8" IsChecked="{Binding IsSelected}">
+                                        <StackPanel>
+                                            <TextBlock Style="{StaticResource BodyText}" Text="{Binding Title}" />
+                                            <TextBlock Style="{StaticResource CaptionText}" Text="{Binding Detail}" />
+                                        </StackPanel>
+                                    </CheckBox>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Grid Margin="0,4,0,0">
+                            <TextBlock Style="{StaticResource CaptionText}" VerticalAlignment="Center" Text="{Binding SelectionText}" />
+                            <Button HorizontalAlignment="Right" Padding="14,6" Content="Hapus yang dipilih"
+                                    Command="{Binding DeleteSelectedCommand}" IsEnabled="{Binding CanDelete}" />
+                        </Grid>
+                    </StackPanel>
+                </StackPanel>
             </Border>
 
             <!-- Daftar backup -->

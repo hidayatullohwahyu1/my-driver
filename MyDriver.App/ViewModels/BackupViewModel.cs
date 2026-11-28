@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 using MyDriver.App.Services;
 using MyDriver.Core.Backups;
 using MyDriver.Core.Devices;
+using MyDriver.Windows.Drivers;
 
 namespace MyDriver.App.ViewModels;
 
@@ -16,8 +17,9 @@ public sealed partial class BackupViewModel : ObservableObject
     private readonly ScanCoordinator _scan;
     private readonly DriverActions _actions;
 
-    public BackupViewModel(WorkspaceService workspace, ScanCoordinator scan, DriverActions actions)
+    public BackupViewModel(WorkspaceService workspace, ScanCoordinator scan, DriverActions actions, DriverStoreInventory driverStore)
     {
+        Cleanup = new DriverStoreCleanupViewModel(driverStore, workspace, scan, actions);
         _workspace = workspace;
         _scan = scan;
         _actions = actions;
@@ -28,6 +30,9 @@ public sealed partial class BackupViewModel : ObservableObject
 
     public ObservableCollection<BackupItemViewModel> Backups { get; } = [];
 
+    /// <summary>Pembersihan DriverStore (F10).</summary>
+    public DriverStoreCleanupViewModel Cleanup { get; }
+
     public bool IsBusy => _workspace.IsBusy;
 
     public string? BusyText => _workspace.BusyText;
@@ -37,7 +42,7 @@ public sealed partial class BackupViewModel : ObservableObject
     public bool HasScan => _workspace.Store is not null && _scan.LastResult is not null;
 
     /// <summary>Tombol yang mengubah sistem: butuh admin, hasil scan, dan tidak ada aksi lain.</summary>
-    public bool CanModify => _actions.CanModify && HasScan && !IsBusy;
+    public bool CanModify => HasScan && !IsBusy;
 
     public bool CanMarkHealthy => HasScan && !IsBusy && !_scan.IsScanning;
 
@@ -80,6 +85,7 @@ public sealed partial class BackupViewModel : ObservableObject
         if (Dialogs.Confirm(message, dangerous: problems > 0))
         {
             _workspace.SaveSnapshot(scan);
+            Dialogs.Info($"Kondisi sehat disimpan: {_workspace.Snapshot?.Drivers.Count ?? 0} driver dicatat sebagai acuan.");
             if (_workspace.NeedsOnboarding)
             {
                 _workspace.CompleteOnboarding();

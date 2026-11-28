@@ -143,6 +143,23 @@ public sealed class ComputerStore
 
     public string FindingsSeenFile => Path.Combine(Directory, "findings-seen.json");
 
+    public string MonitorStateFile => Path.Combine(Directory, "monitor-state.json");
+
+    public Monitoring.MonitorState? LoadMonitorState()
+    {
+        try
+        {
+            return JsonFiles.Read<Monitoring.MonitorState>(MonitorStateFile);
+        }
+        catch (JsonException ex)
+        {
+            _log.Warning($"monitor-state.json rusak dan diabaikan: {MonitorStateFile}", ex);
+            return null;
+        }
+    }
+
+    public void SaveMonitorState(Monitoring.MonitorState state) => JsonFiles.Write(MonitorStateFile, state);
+
     /// <summary>Kunci temuan → waktu pertama terlihat, untuk teks "sejak kapan" di kartu masalah.</summary>
     public IReadOnlyDictionary<string, DateTime> LoadFindingsSeen()
     {

@@ -25,11 +25,15 @@ public static class MatchTypes
     public const string BugCheck = "bugCheck";
     public const string Whea = "whea";
     public const string UnexpectedShutdown = "unexpectedShutdown";
+    public const string DriverChanged = "driverChanged";
+    public const string DriverNew = "driverNew";
+    public const string DriverMissing = "driverMissing";
 
     public static readonly IReadOnlySet<string> All = new HashSet<string>(StringComparer.Ordinal)
     {
         DeviceError, UnsignedDriver, OldDriver, BackupMissing, BackupOld,
         Tdr, DriverLoadFailed, BugCheck, Whea, UnexpectedShutdown,
+        DriverChanged, DriverNew, DriverMissing,
     };
 }
 

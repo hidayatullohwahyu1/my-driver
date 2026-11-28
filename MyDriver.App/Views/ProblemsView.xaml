@@ -50,7 +50,14 @@
                 </StackPanel>
                 <StackPanel HorizontalAlignment="Right" VerticalAlignment="Top" Orientation="Horizontal" Margin="0,4,0,0">
                     <CheckBox VerticalAlignment="Center" Margin="0,0,16,0" Content="Tampilkan info" IsChecked="{Binding ShowInfo}" />
-                    <Button Padding="14,7" Command="{Binding RescanCommand}" IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBool}}">
+                    <Button Padding="14,7" Margin="0,0,8,0" Command="{Binding ExportReportCommand}"
+                            ToolTip="Simpan laporan HTML atau teks untuk arsip atau dikirim ke teknisi" AutomationProperties.Name="Ekspor laporan">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource IconText}" FontSize="14" Text="&#xE898;" Margin="0,0,8,0" />
+                            <TextBlock Text="Ekspor laporan" />
+                        </StackPanel>
+                    </Button>
+                    <Button Padding="14,7" Command="{Binding RescanCommand}" IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBool}}" AutomationProperties.Name="Periksa ulang">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Style="{StaticResource IconText}" FontSize="14" Text="&#xE72C;" Margin="0,0,8,0" />
                             <TextBlock Text="Periksa ulang" />

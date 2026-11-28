@@ -35,6 +35,7 @@ public static class ActionCatalog
     public const string DisableUnusedDevices = "disableUnusedDevices";
     public const string ManufacturerSite = "manufacturerSite";
     public const string CheckPower = "checkPower";
+    public const string MarkHealthy = "markHealthy";
 
     private static readonly Dictionary<string, ActionInfo> Actions = new ActionInfo[]
     {
@@ -56,6 +57,7 @@ public static class ActionCatalog
         new(CheckBios, "Cek pengaturan BIOS", "Pastikan perangkat ini aktif di pengaturan BIOS/UEFI dan BIOS sudah versi terbaru.", ActionKind.Manual, false),
         new(DisableUnusedDevices, "Nonaktifkan perangkat yang tidak dipakai", "Mematikan perangkat yang tidak dipakai bisa membebaskan sumber daya yang diperebutkan.", ActionKind.Manual, false),
         new(ManufacturerSite, "Cari driver di situs resmi produsen", "Gunakan merek, model, dan Hardware ID untuk mencari driver di situs resmi.", ActionKind.Manual, false),
+        new(MarkHealthy, "Tandai sebagai sehat", "Mencatat driver yang terpasang sekarang sebagai acuan kondisi sehat untuk perangkat ini.", ActionKind.Button, false, NeedsDevice: true),
         new(CheckPower, "Cek baterai, charger, dan suhu", "Mati mendadak sering disebabkan baterai lemah, charger longgar, atau laptop terlalu panas.", ActionKind.Manual, false),
     }.ToDictionary(a => a.Id, StringComparer.Ordinal);
 

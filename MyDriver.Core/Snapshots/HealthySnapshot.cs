@@ -20,6 +20,22 @@ public sealed record SnapshotDriver(
 /// </summary>
 public sealed record HealthySnapshot(DateTime CreatedAt, IReadOnlyList<SnapshotDriver> Drivers)
 {
+    /// <summary>
+    /// "Tandai sebagai sehat" untuk satu perangkat: entri lamanya (dicocokkan lewat ID instans
+    /// atau Hardware ID) diganti dengan driver yang terpasang sekarang.
+    /// </summary>
+    public HealthySnapshot WithDevice(DeviceInfo device)
+    {
+        var ids = new HashSet<string>(device.HardwareIds, StringComparer.OrdinalIgnoreCase);
+        var kept = Drivers.Where(d =>
+            !string.Equals(d.InstanceId, device.InstanceId, StringComparison.OrdinalIgnoreCase)
+            && !d.HardwareIds.Any(ids.Contains));
+        var updated = new SnapshotDriver(
+            device.InstanceId, device.Name, device.PnpClass, device.Category, device.HardwareIds,
+            device.DriverVersion, device.DriverDate, device.DriverProvider, device.InfName);
+        return this with { Drivers = kept.Append(updated).ToList() };
+    }
+
     /// <summary>Hanya perangkat yang berfungsi normal dan punya driver yang dimasukkan.</summary>
     public static HealthySnapshot FromScan(ScanResult scan, DateTime createdAt) =>
         new(createdAt, scan.Devices

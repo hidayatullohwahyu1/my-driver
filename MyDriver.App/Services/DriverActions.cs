@@ -3,6 +3,7 @@ using MyDriver.Core.Logging;
 using MyDriver.Core.Repair;
 using MyDriver.Windows.Drivers;
 using MyDriver.Windows.Recovery;
+using MyDriver.Windows.Security;
 
 namespace MyDriver.App.Services;
 
@@ -17,12 +18,14 @@ public sealed class DriverActions
     private readonly ScanCoordinator _scan;
     private readonly DriverBackupService _backups;
     private readonly RestorePointService _restorePoints;
+    private readonly ElevationService _elevation;
     private readonly ILogService _log;
 
     public DriverActions(
         AppEnvironment environment, WorkspaceService workspace, ScanCoordinator scan,
-        DriverBackupService backups, RestorePointService restorePoints, ILogService log)
+        DriverBackupService backups, RestorePointService restorePoints, ElevationService elevation, ILogService log)
     {
+        _elevation = elevation;
         _environment = environment;
         _workspace = workspace;
         _scan = scan;
@@ -181,13 +184,30 @@ public sealed class DriverActions
         return confirmed ? "Tanpa restore point (gagal dibuat, dikonfirmasi pengguna)" : null;
     }
 
+    /// <summary>
+    /// Tombol yang butuh Administrator tetap bisa ditekan. Bila aplikasi belum berjalan sebagai
+    /// Administrator, pengguna ditawari membuka ulang aplikasi dengan hak itu.
+    /// </summary>
     public bool CheckAdministrator(string action)
     {
         if (CanModify)
         {
             return true;
         }
-        Dialogs.Info($"{action} butuh hak Administrator. Tekan \"Jalankan sebagai Administrator\" di bagian atas jendela.");
+
+        if (Dialogs.Confirm(
+                $"{action} butuh hak Administrator, dan My Driver! sedang berjalan dalam mode baca saja.\n\n" +
+                "Buka ulang My Driver! sebagai Administrator sekarang? Windows akan meminta konfirmasi."))
+        {
+            if (_elevation.TryRestartAsAdministrator())
+            {
+                System.Windows.Application.Current.Shutdown();
+            }
+            else
+            {
+                Dialogs.Warning("My Driver! tidak dibuka ulang sebagai Administrator (dibatalkan di konfirmasi Windows).");
+            }
+        }
         return false;
     }
 

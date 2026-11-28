@@ -20,11 +20,12 @@ public enum OnboardingStep
     None,
     AskHealthy,
     OfferBackup,
+    OfferMonitoring,
 }
 
 /// <summary>
 /// Beranda: menjawab "apakah komputer saya aman?", dan memandu alur pertama kali
-/// di komputer baru (snapshot sehat, lalu tawaran backup).
+/// di komputer baru (snapshot sehat, tawaran backup, lalu tawaran pemantauan otomatis).
 /// Penilaian Aman/Perhatian/Bermasalah datang dari mesin diagnosis (Tahap 4).
 /// </summary>
 public sealed partial class HomeViewModel : ObservableObject
@@ -33,11 +34,13 @@ public sealed partial class HomeViewModel : ObservableObject
     private readonly WorkspaceService _workspace;
     private readonly DriverActions _actions;
     private readonly DiagnosisService _diagnosis;
+    private readonly SettingsViewModel _settings;
 
     public HomeViewModel(
         AppEnvironment environment, ScanCoordinator scan, WorkspaceService workspace,
-        DriverActions actions, DiagnosisService diagnosis)
+        DriverActions actions, DiagnosisService diagnosis, SettingsViewModel settings)
     {
+        _settings = settings;
         Environment = environment;
         _scan = scan;
         _workspace = workspace;
@@ -121,7 +124,7 @@ public sealed partial class HomeViewModel : ObservableObject
     // ---- Alur pertama kali ----
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsAskHealthy), nameof(IsOfferBackup), nameof(ShowOnboarding))]
+    [NotifyPropertyChangedFor(nameof(IsAskHealthy), nameof(IsOfferBackup), nameof(IsOfferMonitoring), nameof(ShowOnboarding))]
     private OnboardingStep _step;
 
     [ObservableProperty]
@@ -133,13 +136,20 @@ public sealed partial class HomeViewModel : ObservableObject
 
     public bool IsOfferBackup => Step == OnboardingStep.OfferBackup;
 
+    public bool IsOfferMonitoring => Step == OnboardingStep.OfferMonitoring;
+
+    public string MonitoringOfferText =>
+        $"My Driver! akan memeriksa driver saat Windows dibuka dan setiap hari pukul {_settings.SelectedHour.Label}, " +
+        "lalu memberi notifikasi bila ada masalah baru. Bisa diubah kapan saja di Pengaturan." +
+        (MonitoringService.IsOnRemovableDrive ? " Catatan: aplikasi sedang dijalankan dari flashdisk; scan otomatis tidak jalan saat flashdisk dicabut." : string.Empty);
+
     public string ComputerName => _workspace.Store?.Profile is { } p ? $"{p.Manufacturer} {p.Model}".Trim() : "komputer ini";
 
     public string? ProblemNote => _scan.LastResult is { } r && ProblemCount(r) is var n and > 0
         ? $"Catatan: {n} perangkat sedang error atau dinonaktifkan dan tidak akan masuk snapshot."
         : null;
 
-    public bool CanBackup => _actions.CanModify && !_workspace.IsBusy;
+    public bool CanBackup => !_workspace.IsBusy;
 
     public bool IsReadOnly => !_actions.CanModify;
 
@@ -166,12 +176,24 @@ public sealed partial class HomeViewModel : ObservableObject
     {
         if (await _actions.BackupNowAsync())
         {
+            Step = OnboardingStep.OfferMonitoring;
+        }
+    }
+
+    [RelayCommand]
+    private void SkipBackup() => Step = OnboardingStep.OfferMonitoring;
+
+    [RelayCommand]
+    private async Task EnableMonitoringAsync()
+    {
+        if (await _settings.EnableMonitoringAsync())
+        {
             FinishOnboarding();
         }
     }
 
     [RelayCommand]
-    private void SkipBackup() => FinishOnboarding();
+    private void SkipMonitoring() => FinishOnboarding();
 
     [RelayCommand]
     private Task ScanAsync() => _scan.ScanAsync();

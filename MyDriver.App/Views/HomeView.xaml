@@ -47,13 +47,28 @@
                     <TextBlock Style="{StaticResource BodyText}"
                                Text="Backup menyimpan salinan driver komputer ini, sehingga driver bisa dipasang ulang tanpa internet bila nanti bermasalah. Prosesnya beberapa menit." />
                     <TextBlock Style="{StaticResource CaptionText}" Margin="0,6,0,0" Foreground="{DynamicResource StatusWarningBrush}"
-                               Text="Backup butuh hak Administrator. Anda bisa melakukannya nanti dari halaman Backup."
+                               Text="Backup butuh hak Administrator. Saat tombol ditekan, Anda ditawari membuka ulang aplikasi sebagai Administrator."
                                Visibility="{Binding IsReadOnly, Converter={StaticResource BoolToVisibility}}" />
                     <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
                         <Button Padding="16,7" Style="{DynamicResource AccentButtonStyle}" Content="Backup sekarang"
                                 Command="{Binding BackupFromOnboardingCommand}" IsEnabled="{Binding CanBackup}" />
                         <Button Padding="16,7" Margin="8,0,0,0" Content="Nanti saja"
                                 Command="{Binding SkipBackupCommand}" />
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Langkah 3: tawaran pemantauan otomatis -->
+                <StackPanel Grid.Column="1" Visibility="{Binding IsOfferMonitoring, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Style="{StaticResource SectionTitleText}" Margin="0,0,0,4" Text="Aktifkan pemantauan otomatis?" />
+                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding MonitoringOfferText}" />
+                    <TextBlock Style="{StaticResource CaptionText}" Margin="0,6,0,0" Foreground="{DynamicResource StatusWarningBrush}"
+                               Text="Pemantauan butuh hak Administrator. Saat tombol ditekan, Anda ditawari membuka ulang aplikasi sebagai Administrator."
+                               Visibility="{Binding IsReadOnly, Converter={StaticResource BoolToVisibility}}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                        <Button Padding="16,7" Style="{DynamicResource AccentButtonStyle}" Content="Aktifkan"
+                                Command="{Binding EnableMonitoringCommand}" IsEnabled="{Binding CanBackup}" />
+                        <Button Padding="16,7" Margin="8,0,0,0" Content="Nanti saja"
+                                Command="{Binding SkipMonitoringCommand}" />
                     </StackPanel>
                 </StackPanel>
             </Grid>
@@ -117,7 +132,7 @@
                         Style="{DynamicResource AccentButtonStyle}" Content="Lihat masalah"
                         Command="{Binding OpenProblemsCommand}"
                         Visibility="{Binding HasFindings, Converter={StaticResource BoolToVisibility}}" />
-                <Button Padding="20,10" HorizontalAlignment="Stretch" Command="{Binding ScanCommand}">
+                <Button Padding="20,10" HorizontalAlignment="Stretch" Command="{Binding ScanCommand}" AutomationProperties.Name="Scan sekarang">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Style="{StaticResource IconText}" FontSize="14" Text="&#xE721;" Margin="0,0,8,0" />
                         <TextBlock>

@@ -3,6 +3,8 @@ using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MyDriver.App.Services;
+using MyDriver.Core.Settings;
+using MyDriver.Windows.Drivers;
 using MyDriver.Windows.Security;
 
 namespace MyDriver.App.ViewModels;
@@ -14,20 +16,20 @@ public sealed partial class MainViewModel : ObservableObject
     public MainViewModel(
         AppEnvironment environment, ElevationService elevation, ScanCoordinator scan,
         WorkspaceService workspace, DriverActions actions, DiagnosisService diagnosis, RepairService repair,
-        SettingsViewModel settings)
+        MonitoringService monitoring, DriverStoreInventory driverStore, AppSettings appSettings, SettingsViewModel settings)
     {
         _elevation = elevation;
         Environment = environment;
 
-        var home = new HomeViewModel(environment, scan, workspace, actions, diagnosis);
+        var home = new HomeViewModel(environment, scan, workspace, actions, diagnosis, settings);
         home.OpenProblemsRequested += (_, _) => SelectedItem = Items![1];
 
         Items = new ObservableCollection<NavigationItem>
         {
             new("Beranda", "", home),
             new("Masalah", "", new ProblemsViewModel(diagnosis, workspace, scan, repair)),
-            new("Perangkat", "", new DevicesViewModel(scan)),
-            new("Backup", "", new BackupViewModel(workspace, scan, actions)),
+            new("Perangkat", "", new DevicesViewModel(scan, appSettings)),
+            new("Backup", "", new BackupViewModel(workspace, scan, actions, driverStore)),
             new("Riwayat", "", new HistoryViewModel(workspace)),
             new("Pengaturan", "", settings),
         };
@@ -35,6 +37,9 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     public AppEnvironment Environment { get; }
+
+    /// <summary>Membuka halaman Masalah (dari Beranda atau dari klik notifikasi).</summary>
+    public void OpenProblems() => SelectedItem = Items[1];
 
     public ObservableCollection<NavigationItem> Items { get; }
 

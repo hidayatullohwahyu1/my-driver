@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "rules": [
     {
       "id": "cm-1",
@@ -226,6 +226,30 @@
       "title": "Komputer mati mendadak",
       "explanation": "Windows mati tanpa dimatikan dengan benar sebanyak {count} kali dalam 7 hari terakhir (terakhir {date}).",
       "actions": ["checkPower"]
+    },
+    {
+      "id": "driver-changed",
+      "match": { "type": "driverChanged" },
+      "level": "info",
+      "title": "Driver {device} berubah sejak kondisi sehat",
+      "explanation": "Versi driver berubah dari {oldVersion} menjadi {newVersion} sejak kondisi sehat dicatat ({snapshotDate}). Perangkat berfungsi normal.",
+      "actions": ["markHealthy", "rollbackToSnapshot"]
+    },
+    {
+      "id": "driver-new",
+      "match": { "type": "driverNew" },
+      "level": "info",
+      "title": "Driver baru: {device}",
+      "explanation": "Perangkat ini belum tercatat saat kondisi sehat dicatat ({snapshotDate}). Perangkat berfungsi normal.",
+      "actions": ["markHealthy"]
+    },
+    {
+      "id": "driver-missing",
+      "match": { "type": "driverMissing" },
+      "level": "info",
+      "title": "{device} tidak terdeteksi lagi",
+      "explanation": "Perangkat ini tercatat saat kondisi sehat ({snapshotDate}), tetapi sekarang tidak terdeteksi. Bila perangkat ini memang dilepas, abaikan saja.",
+      "actions": ["checkConnection", "rescanHardware"]
     }
   ]
 }

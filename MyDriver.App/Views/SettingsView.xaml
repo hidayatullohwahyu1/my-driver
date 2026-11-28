@@ -9,7 +9,71 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto">
     <StackPanel MaxWidth="900" HorizontalAlignment="Left" Margin="36,30">
         <TextBlock Style="{StaticResource PageTitleText}" Text="Pengaturan" />
-        <TextBlock Style="{StaticResource PageSubtitleText}" Text="Tampilan, folder data, dan informasi aplikasi." />
+        <TextBlock Style="{StaticResource PageSubtitleText}" Text="Pemantauan otomatis, tampilan, folder data, dan informasi aplikasi." />
+
+        <!-- Pemantauan otomatis (Task Scheduler) -->
+        <Border Style="{StaticResource Card}">
+            <StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="Pemantauan otomatis" />
+                        <TextBlock Style="{StaticResource CaptionText}" Text="{Binding MonitoringText}" />
+                        <TextBlock Style="{StaticResource CaptionText}" Margin="0,4,0,0" Foreground="{DynamicResource StatusWarningBrush}"
+                                   Text="My Driver! sedang dijalankan dari flashdisk; scan otomatis tidak jalan saat flashdisk dicabut."
+                                   Visibility="{Binding IsOnRemovableDrive, Converter={StaticResource BoolToVisibility}}" />
+                        <TextBlock Margin="0,4,0,0" Foreground="{DynamicResource StatusWarningBrush}"
+                                   Text="Mengubah pemantauan butuh hak Administrator; saat tombol ditekan, Anda ditawari membuka ulang aplikasi sebagai Administrator.">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource CaptionText}">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Environment.IsAdministrator}" Value="False">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+                    <Button Grid.Column="1" MinWidth="110" Padding="14,6" VerticalAlignment="Center"
+                            Command="{Binding ToggleMonitoringCommand}" IsEnabled="{Binding CanChangeMonitoring}" AutomationProperties.Name="Aktifkan atau matikan pemantauan otomatis">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                <Setter Property="Content" Value="Aktifkan" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsMonitoringEnabled}" Value="True">
+                                        <Setter Property="Content" Value="Matikan" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                </Grid>
+
+                <Separator Margin="0,14" />
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource BodyText}" Text="Jam scan harian" />
+                        <TextBlock Style="{StaticResource CaptionText}" Text="Bila komputer mati pada jam itu, scan dijalankan saat komputer menyala lagi." />
+                    </StackPanel>
+                    <ComboBox Grid.Column="1" MinWidth="110" VerticalAlignment="Center"
+                              ItemsSource="{Binding HourOptions}" DisplayMemberPath="Label" SelectedItem="{Binding SelectedHour}"
+                              AutomationProperties.Name="Jam scan harian" />
+                </Grid>
+
+                <CheckBox Margin="0,14,0,0" IsChecked="{Binding NotificationsEnabled}"
+                          Content="Tampilkan notifikasi bila scan otomatis menemukan masalah baru" />
+            </StackPanel>
+        </Border>
 
         <Border Style="{StaticResource Card}">
             <Grid>
@@ -49,11 +113,13 @@
             </StackPanel>
         </Border>
 
-        <Border Style="{StaticResource PlaceholderCard}">
+        <Border Style="{StaticResource Card}">
             <StackPanel>
-                <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="Scan otomatis dan notifikasi" />
-                <TextBlock Style="{StaticResource CaptionText}" Margin="0,2,0,0"
-                           Text="Scan otomatis, jam scan harian, notifikasi, dan sembunyikan perangkat tak tersambung tersedia pada tahap berikutnya." />
+                <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="Tampilan perangkat" />
+                <CheckBox Margin="0,8,0,0" IsChecked="{Binding HideDisconnectedDevices}"
+                          Content="Sembunyikan perangkat yang sedang tidak tersambung" />
+                <TextBlock Style="{StaticResource CaptionText}" Margin="26,2,0,0"
+                           Text="Berlaku untuk halaman Perangkat saat aplikasi dibuka berikutnya." />
             </StackPanel>
         </Border>
 

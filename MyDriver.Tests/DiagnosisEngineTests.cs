@@ -263,6 +263,9 @@ public class DiagnosisEngineTests
         var triggered = Diagnose(Scan(devices), noBackup: true).Findings
             .Concat(Diagnose(Scan(), lastBackup: Now.AddDays(-200)).Findings)
             .Concat(new DiagnosisEngine(Rules).Diagnose(new DiagnosisInput(Scan(), null, RecentBackup, Now, Health: SystemHealthTests.SampleHealth(Now))).Findings)
+            .Concat(Diagnose(
+                Scan(TestData.Device("SAMA", version: "2.0"), TestData.Device("BARU")),
+                SnapshotWith("SAMA", "1.0") with { Drivers = [.. SnapshotWith("SAMA", "1.0").Drivers, .. SnapshotWith("HILANG", "1.0").Drivers] }).Findings)
             .Select(f => f.RuleId)
             .ToHashSet();
 
